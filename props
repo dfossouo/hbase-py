@@ -4,7 +4,8 @@
 #
 ##############################################################
 hbase.rootdir=/apps/hbase/data
-hbase.zookeeper.quorum=hdpcluster-15377-worker-2.field.hortonworks.com:2181:/hbase-unsecure
+hbase.zookeeper.quorum=hdpcluster-15377-master-0.field.hortonworks.com:2181/hbase-unsecure
+zookeeper.znode.parent=/hbase-unsecure
 hbase.snapshot.path=/user/hbase
 
 

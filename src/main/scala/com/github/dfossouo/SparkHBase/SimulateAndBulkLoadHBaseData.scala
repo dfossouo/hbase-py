@@ -78,6 +78,8 @@ object SimulateAndBulkLoadHBaseData{
     
     println("[ *** ] Creating HBase Configuration")
     val hConf = HBaseConfiguration.create()
+    hConf.set("hbase.rootdir", props.getOrElse("hbase.rootdir", "/tmp"))
+    hConf.set("hbase.zookeeper.quorum",  props.getOrElse("hbase.zookeeper.quorum", "hdpcluster-15377-master-0.field.hortonworks.com:2181"))
     hConf.set("zookeeper.znode.parent", "/hbase-unsecure")
     hConf.set(TableInputFormat.INPUT_TABLE, hTableName)
 
@@ -110,6 +112,7 @@ object SimulateAndBulkLoadHBaseData{
 
         println("[ *** ] Saving data to HDFS as KeyValue/HFileOutputFormat (table name = " + hTableName + ")")
         val hConf2 = HBaseConfiguration.create()
+        hConf2.set("hbase.zookeeper.quorum",  props.getOrElse("hbase.zookeeper.quorum", "hdpcluster-15377-master-0.field.hortonworks.com:2181"))
         hConf2.set("zookeeper.znode.parent", "/hbase-unsecure")
         hConf2.set(TableOutputFormat.OUTPUT_TABLE, hTableName)
         rdd_out.saveAsNewAPIHadoopFile("/tmp/" + hTableName, classOf[ImmutableBytesWritable], classOf[KeyValue], classOf[HFileOutputFormat], hConf2)
