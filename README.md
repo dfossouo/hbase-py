@@ -1,5 +1,11 @@
 # hbase-py
 
+## Prerequisites 
+# Scala 2.12.7 
+# Sbt 1.2.4 
+# Java 1.8
+# In case of Errors during the compilation change the property inside README.md <scala.version>2.11</scala.version> 
+
 1. Sample of Usage of the tables 
 
 Edit the file according to your cluster informations : 

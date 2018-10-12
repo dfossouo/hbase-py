@@ -22,7 +22,7 @@ import time, datetime
 # User Inputs (could be moved to arguments)
 hostname            = 'hdpcluster-15377-worker-2.field.hortonworks.com'
 port                = 9999 # hbase thrift server port 
-table_name          = 'customer_info'
+table_name          = 'customer_info_debug'
 columnfamily        = 'demographics'
 number_of_records   = 1000000
 batch_size          = 2000
@@ -51,7 +51,9 @@ print '[ INFO ] Successfully created HBase table:  ' + str(table_name)
 
 
 print '[ INFO ] Inserting ' + str(number_of_records) + ' records into ' + str(table_name)
+
 start_time = datetime.datetime.now()
+
 with table.batch(batch_size=batch_size) as b:
     for i in range(number_of_records):
         rowkey  = i 
@@ -59,6 +61,9 @@ with table.batch(batch_size=batch_size) as b:
         gender  = ['male','female'][random.randint(0,1)]
         age     = random.randint(18,100)
         level   = ['silver','gold','platimum','diamond'][random.randint(0,3)]
+        data    = { 'demographics:custid': str(custid),'demographics:gender': str(gender),'demographics:age': str(age),'demographics:level': str(level) }
+
+        print '[ INFO ] Json file to put in HBASE: ' + str(data)
         
         b.put(str(rowkey), {b'demographics:custid': str(custid),
                           b'demographics:gender': str(gender),
