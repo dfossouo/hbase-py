@@ -172,7 +172,7 @@ object SparkReadHBaseSnapshot{
 
     //println("[ *** ] Saving results to HDFS as HBase KeyValue HFileOutputFormat. This makes it easy to BulkLoad into HBase (see SparkHBaseBulkLoad.scala for bulkload code)") 
     //rdd_from_df.map(x => x._2.toString).take(10).foreach(x => println(x))
-    rdd_from_df.saveAsNewAPIHadoopFile("/tmp/" + hTableName, classOf[ImmutableBytesWritable], classOf[KeyValue], classOf[HFileOutputFormat], hConf2)
+    rdd_from_df.saveAsNewAPIHadoopFile("/tmp/" + time_snapshot_processing.getTimeInMillis() + "_" + hTableName, classOf[ImmutableBytesWritable], classOf[KeyValue], classOf[HFileOutputFormat], hConf2)
 
     // Print Total Runtime
     val end_time = Calendar.getInstance()
