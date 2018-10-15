@@ -96,10 +96,10 @@ object SparkReadHBaseSnapshot{
     // Extract the KeyValue element of the tuple
     val keyValue = hBaseRDD.map(x => x._2).map(_.list)
 
-    //println("[ *** ] Printing raw SnapShot (10 records) from HBase SnapShot")         
-    //hBaseRDD.map(x => x._1.toString).take(10).foreach(x => println(x))
-    //hBaseRDD.map(x => x._2.toString).take(10).foreach(x => println(x))
-    //keyValue.map(x => x.toString).take(10).foreach(x => println(x))
+    println("[ *** ] Printing raw SnapShot (10 records) from HBase SnapShot")         
+    hBaseRDD.map(x => x._1.toString).take(10).foreach(x => println(x))
+    hBaseRDD.map(x => x._2.toString).take(10).foreach(x => println(x))
+    keyValue.map(x => x.toString).take(10).foreach(x => println(x))
 
     val df = keyValue.flatMap(x =>  x.asScala.map(cell =>
         hVar(
