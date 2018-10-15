@@ -6,7 +6,16 @@
 # Java 1.8
 # In case of Errors during the compilation change the property inside README.md <scala.version>2.11</scala.version> 
 
-1. Sample of Usage of the tables 
+1. Give right permission in Ranger 
+
+The user who will run the script will need access to /user/hbase folder on HDFS. 
+
+Give the permission according to it. 
+
+Also give permission to the user to allow him to create or delete tables of the project. 
+
+
+2. Sample of Usage of the tables 
 
 Edit the file according to your cluster informations : 
 
