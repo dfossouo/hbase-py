@@ -73,7 +73,7 @@ object SimulateAndBulkLoadHBaseData{
     import sqlContext.implicits._
  
     // HBase table name (if it does not exist, it will be created) 
-    val hTableName   = props.getOrElse("simulated_tablename", "hbase_simulated_table")
+    val hTableName   = props.getOrElse("simulated_tablename"+start_time.getTimeInMillis(), "hbase_simulated_table")
     val columnFamily = "cf"
     
     println("[ *** ] Creating HBase Configuration")
@@ -115,14 +115,14 @@ object SimulateAndBulkLoadHBaseData{
         hConf2.set("hbase.zookeeper.quorum",  props.getOrElse("hbase.zookeeper.quorum", "hdpcluster-15377-master-0.field.hortonworks.com:2181"))
         hConf2.set("zookeeper.znode.parent", "/hbase-unsecure")
         hConf2.set(TableOutputFormat.OUTPUT_TABLE, hTableName)
-        rdd_out.saveAsNewAPIHadoopFile("/tmp/" + hTableName, classOf[ImmutableBytesWritable], classOf[KeyValue], classOf[HFileOutputFormat], hConf2)
+        rdd_out.saveAsNewAPIHadoopFile("/tmp/" + start_time.getTimeInMillis() + "_" + hTableName, classOf[ImmutableBytesWritable], classOf[KeyValue], classOf[HFileOutputFormat], hConf2)
 
-        println("[ *** ] BulkLoading from HDFS (HFileOutputFormat) to HBase Table (" + hTableName  + ")")
+        println("[ *** ] BulkLoading from HDFS (HFileOutputFormat) to HBase Table (" + start_time.getTimeInMillis() + "_" + hTableName  + ")")
         val bulkLoader = new LoadIncrementalHFiles(hConf2)
-        bulkLoader.doBulkLoad(new Path("/tmp/" + hTableName), table)
+        bulkLoader.doBulkLoad(new Path("/tmp/" + start_time.getTimeInMillis() + "_" + hTableName), table)
 
     }else{
-        println("[ *** ] HBase Table ( " + hTableName + " ) already exists!")
+        println("[ *** ] HBase Table ( " + start_time.getTimeInMillis() + "_" + hTableName + " ) already exists!")
         println("[ *** ] Stopping the simulation. Remove the existing HBase table and try again.")
     }
 

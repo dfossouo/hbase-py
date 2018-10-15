@@ -55,6 +55,9 @@ import java.util.Date
 import java.util.Calendar
 import java.lang.String
 
+import sys.process._
+
+
 object SparkReadHBaseSnapshot{
  
   case class hVar(rowkey: Int, colFamily: String, colQualifier: String, colDatetime: Long, colDatetimeStr: String, colType: String, colValue: String)
@@ -173,6 +176,9 @@ object SparkReadHBaseSnapshot{
     //println("[ *** ] Saving results to HDFS as HBase KeyValue HFileOutputFormat. This makes it easy to BulkLoad into HBase (see SparkHBaseBulkLoad.scala for bulkload code)") 
     //rdd_from_df.map(x => x._2.toString).take(10).foreach(x => println(x))
     rdd_from_df.saveAsNewAPIHadoopFile("/tmp/" + time_snapshot_processing.getTimeInMillis() + "_" + hTableName, classOf[ImmutableBytesWritable], classOf[KeyValue], classOf[HFileOutputFormat], hConf2)
+
+    // Get CHECKSUM OF THE GENERATE SNAPSHOT
+    (s"hadoop fs -checksum " + "/tmp/" + time_snapshot_processing.getTimeInMillis() + "_" + hTableName + "/cf/*")!
 
     // Print Total Runtime
     val end_time = Calendar.getInstance()
