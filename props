@@ -16,7 +16,7 @@ hbase.snapshot.path=/user/dfossouo
 ##############################################################
 hbase.snapshot.name=hbase_simulated_50m_ss
 hbase.snapshot.versions=3
-datetime_threshold=2016-09-23 06:27:08:000
+datetime_threshold=2018-10-16 11:24:08:000
 
 
 ##############################################################

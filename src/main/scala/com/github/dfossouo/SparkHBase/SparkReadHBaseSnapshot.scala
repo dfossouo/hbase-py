@@ -121,7 +121,7 @@ object SparkReadHBaseSnapshot{
     df.show(10, false)
 
     //Get timestamp (from props) that will be used for filtering
-    val datetime_threshold      = props.getOrElse("datetime_threshold", "2016-08-25 14:27:02:001")
+    val datetime_threshold      = props.getOrElse("datetime_threshold", "2018-10-16 11:24:02:001")
     val datetime_threshold_long = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSS").parse(datetime_threshold).getTime()
     println("[ *** ] Filtering/Keeping all SnapShot records that are more recent (greater) than the datetime_threshold (set in the props file): " + datetime_threshold.toString)
     
