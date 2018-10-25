@@ -75,7 +75,7 @@ object SparkReadHBaseSnapshot{
     val sqlContext = new org.apache.spark.sql.SQLContext(sc)
     import sqlContext.implicits._
 
-    println("[ *** ] Creating HBase Configuration")
+    println("[ *** ] Creating HBase Configuration cluster 1")
     val hConf = HBaseConfiguration.create()
     hConf.set("hbase.rootdir", props.getOrElse("hbase.rootdir", "/tmp"))
     hConf.set("hbase.zookeeper.quorum",  props.getOrElse("hbase.zookeeper.quorum", "hdpcluster-15377-master-0.field.hortonworks.com:2181"))
@@ -84,27 +84,88 @@ object SparkReadHBaseSnapshot{
     val job = Job.getInstance(hConf)
 
     val path = new Path(props.getOrElse("hbase.snapshot.path", "/user/hbase"))
-    val snapName = props.getOrElse("hbase.snapshot.name", "customer_info_ss")
+    val snapName = props.getOrElse("hbase.snapshot.name", "hbase_simulated_50m")
 
     TableSnapshotInputFormat.setInput(job, snapName, path)
 
-    val hBaseRDD = sc.newAPIHadoopRDD(job.getConfiguration, 
-        classOf[TableSnapshotInputFormat],
-        classOf[org.apache.hadoop.hbase.io.ImmutableBytesWritable],
-        classOf[org.apache.hadoop.hbase.client.Result])
-    
-    val record_count_raw = hBaseRDD.count() 
-    println("[ *** ] Read in SnapShot (" + snapName.toString  + "), which contains " + record_count_raw + " records")
- 
+    val hBaseRDD = sc.newAPIHadoopRDD(job.getConfiguration,
+      classOf[TableSnapshotInputFormat],
+      classOf[org.apache.hadoop.hbase.io.ImmutableBytesWritable],
+      classOf[org.apache.hadoop.hbase.client.Result])
+
+    val record_count_raw = hBaseRDD.count()
+    println("[ *** ] Read in SnapShot of table on cluster 1 (" + snapName.toString  + "), which contains " + record_count_raw + " records")
+
     // Extract the KeyValue element of the tuple
     val keyValue = hBaseRDD.map(x => x._2).map(_.list)
 
-    println("[ *** ] Printing raw SnapShot (10 records) from HBase SnapShot")         
+    println("[ *** ] Printing raw SnapShot (10 records) from HBase SnapShot")
     hBaseRDD.map(x => x._1.toString).take(10).foreach(x => println(x))
     hBaseRDD.map(x => x._2.toString).take(10).foreach(x => println(x))
     keyValue.map(x => x.toString).take(10).foreach(x => println(x))
 
     val df = keyValue.flatMap(x =>  x.asScala.map(cell =>
+      hVar(
+        Bytes.toInt(CellUtil.cloneRow(cell)),
+        Bytes.toStringBinary(CellUtil.cloneFamily(cell)),
+        Bytes.toStringBinary(CellUtil.cloneQualifier(cell)),
+        cell.getTimestamp,
+        new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSS").format(new Date(cell.getTimestamp.toLong)),
+        Type.codeToType(cell.getTypeByte).toString,
+        Bytes.toStringBinary(CellUtil.cloneValue(cell))
+      )
+    )
+    ).toDF()
+
+    println("[ *** ] Printing parsed SnapShot (10 records) from HBase SnapShot Cluster 1")
+    df.show(10, false)
+
+    //Get timestamp (from props) that will be used for filtering
+    val datetime_threshold      = props.getOrElse("datetime_threshold", "2018-10-16 11:24:02:001")
+    val datetime_threshold_long = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSS").parse(datetime_threshold).getTime()
+    println("[ *** ] Filtering/Keeping all SnapShot records that are more recent (greater) than the datetime_threshold (set in the props file): " + datetime_threshold.toString)
+
+    println("[ *** ] Filtering Dataframe")
+    val df_filtered = df.filter($"colDatetime" >= datetime_threshold_long && $"rowkey".between(80001, 90000))
+
+    println("[ *** ] Filtered dataframe contains cluster 2 " + df_filtered.count() + " records")
+    println("[ *** ] Printing filtered HBase SnapShot records (10 records) of cluster 2")
+    df_filtered.show(10, false)
+
+    // Second Part Cluster 2
+
+    println("[ *** ] Creating HBase Configuration cluster 2")
+    val hConfx = HBaseConfiguration.create()
+    hConfx.set("hbase.rootdir", props.getOrElse("hbase.rootdir_x", "/tmp"))
+    hConfx.set("hbase.zookeeper.quorum",  props.getOrElse("hbase.zookeeper.quorum_x", "hdpcluster-15377-master-0.field.hortonworks.com:2181"))
+    hConfx.set(TableInputFormat.SCAN, convertScanToString(new Scan().setMaxVersions(max_versions)) )
+
+
+    val jobx = Job.getInstance(hConfx)
+
+    val pathx = new Path(props.getOrElse("hbase.snapshot.path_x", "/user/hbase"))
+    val snapNamex = props.getOrElse("hbase.snapshot.name_x", "hbase_simulated_50mx")
+
+
+    TableSnapshotInputFormat.setInput(jobx, snapNamex, pathx)
+
+    val hBaseRDDx = sc.newAPIHadoopRDD(jobx.getConfiguration,
+        classOf[TableSnapshotInputFormat],
+        classOf[org.apache.hadoop.hbase.io.ImmutableBytesWritable],
+        classOf[org.apache.hadoop.hbase.client.Result])
+    
+    val record_count_rawx = hBaseRDDx.count()
+    println("[ *** ] Read in SnapShot of table on cluster 2 (" + snapNamex.toString  + "), which contains " + record_count_rawx + " records")
+ 
+    // Extract the KeyValue element of the tuple
+    val keyValuex = hBaseRDDx.map(x => x._2).map(_.list)
+
+    println("[ *** ] Printing raw SnapShot (10 records) from HBase SnapShot")         
+    hBaseRDDx.map(x => x._1.toString).take(10).foreach(x => println(x))
+    hBaseRDDx.map(x => x._2.toString).take(10).foreach(x => println(x))
+    keyValuex.map(x => x.toString).take(10).foreach(x => println(x))
+
+    val dfx = keyValuex.flatMap(x =>  x.asScala.map(cell =>
         hVar(
             Bytes.toInt(CellUtil.cloneRow(cell)),
             Bytes.toStringBinary(CellUtil.cloneFamily(cell)),
@@ -117,76 +178,20 @@ object SparkReadHBaseSnapshot{
         )
     ).toDF()
 
-    println("[ *** ] Printing parsed SnapShot (10 records) from HBase SnapShot")
-    df.show(10, false)
+    println("[ *** ] Printing parsed SnapShot (10 records) from HBase SnapShot cluster 2")
+    dfx.show(10, false)
 
     //Get timestamp (from props) that will be used for filtering
-    val datetime_threshold      = props.getOrElse("datetime_threshold", "2018-10-16 11:24:02:001")
-    val datetime_threshold_long = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSS").parse(datetime_threshold).getTime()
-    println("[ *** ] Filtering/Keeping all SnapShot records that are more recent (greater) than the datetime_threshold (set in the props file): " + datetime_threshold.toString)
+    val datetime_threshold_x      = props.getOrElse("datetime_threshold", "2018-10-16 11:24:02:001")
+    val datetime_threshold_x_long = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSS").parse(datetime_threshold_x).getTime()
+    println("[ *** ] Filtering/Keeping all SnapShot records that are more recent (greater) than the datetime_threshold (set in the props file): " + datetime_threshold_x.toString)
     
     println("[ *** ] Filtering Dataframe")
-    val df_filtered = df.filter($"colDatetime" >= datetime_threshold_long && $"rowkey".between(80001, 90000))
+    val df_filtered_x = dfx.filter($"colDatetime" >= datetime_threshold_x_long && $"rowkey".between(80001, 90000))
 
-/*  // Filter RDD (alternative, but using a DF is a better option)
-    val rdd_filtered = keyValue.flatMap(x => x.asScala.map(cell =>
-          {(
-            Bytes.toStringBinary(CellUtil.cloneRow(cell)),
-            Bytes.toStringBinary(CellUtil.cloneFamily(cell)),
-            Bytes.toStringBinary(CellUtil.cloneQualifier(cell)),
-            cell.getTimestamp,
-            new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSS").format(new Date(cell.getTimestamp.toLong)),
-            Type.codeToType(cell.getTypeByte).toString,
-            Bytes.toStringBinary(CellUtil.cloneValue(cell))
-          )}
-       )).filter(x => x._4>=datetime_threshold_long)
-*/
- 
-    println("[ *** ] Filtered dataframe contains " + df_filtered.count() + " records")
-    println("[ *** ] Printing filtered HBase SnapShot records (10 records)")
-    df_filtered.show(10, false)
-
-    // For testing purposes, print datatypes
-    //df_filtered.dtypes.toList.foreach(x => println(x))
-
-    // Convert DF to KeyValue
-    println("[ *** ] Converting dataframe to RDD so that it can be written as HFileOutputFormat using saveAsNewAPIHadoopFile")
-    val rdd_from_df = df_filtered.rdd.map(x => {
-        val kv: KeyValue = new KeyValue( Bytes.toBytes(x(0).asInstanceOf[Int]), x(1).toString.getBytes(), x(2).toString.getBytes(), x(3).asInstanceOf[Long], x(6).toString.getBytes() )
-        (new ImmutableBytesWritable( Bytes.toBytes(x(0).asInstanceOf[Int]) ), kv)
-    })
-
-/*  // Convert RDD to KeyValue
-    val rdd_to_hbase = rdd_filtered.map(x=>{
-      val kv: KeyValue = new KeyValue(Bytes.toBytes(x._1), x._2.getBytes(), x._3.getBytes(), x._7.getBytes() )
-        (new ImmutableBytesWritable(Bytes.toBytes(x._1)), kv)
-      })
-*/
-
-    val time_snapshot_processing = Calendar.getInstance()
-    println("[ *** ] Runtime for Snapshot Processing: " + ((time_snapshot_processing.getTimeInMillis() - start_time.getTimeInMillis()).toFloat/1000).toString + " seconds")
-
-    // Configure HBase output settings
-    val hTableName = snapName + "_filtered"
-    val hConf2 = HBaseConfiguration.create()
-    hConf2.set("hbase.zookeeper.quorum",  props.getOrElse("hbase.zookeeper.quorum", "hdpcluster-15377-master-0.field.hortonworks.com:2181"))
-    hConf2.set("zookeeper.znode.parent", "/hbase-unsecure")
-    hConf2.set(TableOutputFormat.OUTPUT_TABLE, hTableName)
-
-    //println("[ *** ] Saving results to HDFS as HBase KeyValue HFileOutputFormat. This makes it easy to BulkLoad into HBase (see SparkHBaseBulkLoad.scala for bulkload code)") 
-    //rdd_from_df.map(x => x._2.toString).take(10).foreach(x => println(x))
-    rdd_from_df.saveAsNewAPIHadoopFile("/tmp/" + time_snapshot_processing.getTimeInMillis() + "_" + hTableName, classOf[ImmutableBytesWritable], classOf[KeyValue], classOf[HFileOutputFormat], hConf2)
-
-    // Get CHECKSUM OF THE GENERATE SNAPSHOT
-    (s"hadoop fs -checksum " + "/tmp/" + time_snapshot_processing.getTimeInMillis() + "_" + hTableName + "/cf/*")!
-
-    // Print Total Runtime
-    val end_time = Calendar.getInstance()
-    println("[ *** ] End Time: " + end_time.getTime().toString)
-    println("[ *** ] Saved " + rdd_from_df.count() + " records to HDFS, located in /tmp/" + hTableName.toString)
-    println("[ *** ] Runtime for Snapshot Processing:                 " + ((time_snapshot_processing.getTimeInMillis() - start_time.getTimeInMillis()).toFloat/1000).toString + " seconds")
-    println("[ *** ] Runtime for Snapshot Processing, saving to HDFS: " + ((end_time.getTimeInMillis() - start_time.getTimeInMillis()).toFloat/1000).toString + " seconds")   
-
+    println("[ *** ] Filtered dataframe contains cluster 2 " + df_filtered_x.count() + " records")
+    println("[ *** ] Printing filtered HBase SnapShot records (10 records) of cluster 2")
+    df_filtered_x.show(10, false)
 
     sc.stop()
 
