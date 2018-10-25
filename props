@@ -34,11 +34,11 @@ datetime_threshold_x=2018-10-16 11:24:08:000
 # Props for SparkReadHBaseTable
 #
 ##############################################################
-hbase.table.name=hbase_simulated_50m
+hbase.table.name=customer_info
 hbase.table.versions=3
 datetime_threshold=2018-10-16 11:24:08:000
 
-hbase.table.name_x=hbase_simulated_50mx
+hbase.table.name_x=customer_info_debug
 hbase.table.versions_x=3
 datetime_threshold_x=2018-10-16 11:24:08:000
 hbase.table.start_time=1540365233000L

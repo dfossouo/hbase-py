@@ -85,6 +85,9 @@ object SparkReadHBaseTable {
     val tbscan = 1540365233000L
     val start_time_tblscan = tbscan.toString()
 
+    val table = props.get("hbase.table.name").get
+    val tablex = props.get("hbase.table.name_x").get
+
     // Create Spark Application
     val sparkConf = new SparkConf().setAppName("SparkReadHBaseTable")
     val sc = new SparkContext(sparkConf)
@@ -108,7 +111,7 @@ object SparkReadHBaseTable {
     print("[ ****** ] define schema table emp ")
 
     def customerinfocatalog= s"""{
-        "table":{"namespace":"default", "name":"customer_info"},
+        "table":{"namespace":"default", "name":"$table"},
         "rowkey":"key",
         "columns":{
         "key":{"cf":"rowkey", "col":"key", "type":"string"},
@@ -122,7 +125,7 @@ object SparkReadHBaseTable {
     print("[ ****** ] define schema table customer_info ")
 
     def customerinfodebugcatalog= s"""{
-        "table":{"namespace":"default", "name":"customer_info_x"},
+        "table":{"namespace":"default", "name":"$tablex"},
         "rowkey":"key",
         "columns":{
         "key":{"cf":"rowkey", "col":"key", "type":"string"},
