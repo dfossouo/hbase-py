@@ -76,20 +76,6 @@ object SparkReadHBaseTable {
 
     print("[ ****** ] define schema table emp ")
 
-    def empcatalog = s"""{
-        "table":{"namespace":"default", "name":"emp"},
-        "rowkey":"key",
-        "columns":{
-        "empNumber":{"cf":"rowkey", "col":"key", "type":"string"},
-        "city":{"cf":"personal data", "col":"city", "type":"string"},
-        "empName":{"cf":"personal data", "col":"name", "type":"string"},
-        "jobDesignation":{"cf":"professional data", "col":"designation", "type":"string"},
-        "salary":{"cf":"professional data", "col":"salary", "type":"string"}
-        }
-        }""".stripMargin
-
-    print("[ ****** ] define schema table customer_info ")
-
     def customerinfocatalog= s"""{
         "table":{"namespace":"default", "name":"customer_info"},
         "rowkey":"key",
@@ -102,19 +88,23 @@ object SparkReadHBaseTable {
         }
         }""".stripMargin
 
+    print("[ ****** ] define schema table customer_info ")
+
+    def customerinfodebugcatalog= s"""{
+        "table":{"namespace":"default", "name":"customer_info_debug"},
+        "rowkey":"key",
+        "columns":{
+        "key":{"cf":"rowkey", "col":"key", "type":"string"},
+        "custid":{"cf":"demographics", "col":"custid", "type":"string"},
+        "gender":{"cf":"demographics", "col":"gender", "type":"string"},
+        "age":{"cf":"demographics", "col":"age", "type":"string"},
+        "level":{"cf":"demographics", "col":"level", "type":"string"}
+        }
+        }""".stripMargin
+
     print("[ ****** ] Create DataFrame table emp ")
 
-    def withCatalog(empcatalog: String): DataFrame = {
-      sqlContext
-        .read
-        .options(Map(HBaseTableCatalog.tableCatalog->empcatalog, HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> (start_time_tblscan + 100).toString))
-        .format("org.apache.spark.sql.execution.datasources.hbase")
-        .load()
-    }
-
-    print("[ ****** ] Create DataFrame table customer_info ")
-
-    def withCatalogcust(customerinfocatalog: String): DataFrame = {
+    def withCatalogInfo(customerinfocatalog: String): DataFrame = {
       sqlContext
         .read
         .options(Map(HBaseTableCatalog.tableCatalog->customerinfocatalog, HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> (start_time_tblscan + 100).toString))
@@ -122,54 +112,45 @@ object SparkReadHBaseTable {
         .load()
     }
 
-    print("[ ****** ] declare DataFrame for table empcatalog ")
+    print("[ ****** ] Create DataFrame table customer_info ")
 
-    val df = withCatalog(empcatalog)
-
-    print("[ ****** ] declare DataFrame for table customer_info ")
-
-    val df_customer_info = withCatalogcust(customerinfocatalog)
-
-
-    print("[ ****** ] here is the dataframe contain: ")
-
-    df.show(10)
-    df_customer_info.show(10)
-
-    def empcatalogx = s"""{
-        "table":{"namespace":"default", "name":"empx"},
-        "rowkey":"key",
-        "columns":{
-        "empNumber":{"cf":"rowkey", "col":"key", "type":"string"},
-        "city":{"cf":"personal data", "col":"city", "type":"string"},
-        "empName":{"cf":"personal data", "col":"name", "type":"string"},
-        "jobDesignation":{"cf":"professional data", "col":"designation", "type":"string"},
-        "salary":{"cf":"professional data", "col":"salary", "type":"string"}
-        }
-        }""".stripMargin
-
-    def withCatalogx(empcatalog: String): DataFrame = {
+    def withCatalogInfoDebug(customerinfodebugcatalog: String): DataFrame = {
       sqlContext
         .read
-        .options(Map(HBaseTableCatalog.tableCatalog->empcatalogx, HBaseRelation.TIMESTAMP -> start_time_tblscan.toString))
+        .options(Map(HBaseTableCatalog.tableCatalog->customerinfodebugcatalog, HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> (start_time_tblscan + 100).toString))
         .format("org.apache.spark.sql.execution.datasources.hbase")
         .load()
     }
 
-    val dfx = withCatalogx(empcatalogx)
+    print("[ ****** ] declare DataFrame for table customer_info ")
 
-    dfx.show(10)
+    val df = withCatalogInfo(customerinfocatalog)
+
+    print("[ ****** ] declare DataFrame for table customer_info_debug ")
+
+    val df_debug = withCatalogInfoDebug(customerinfodebugcatalog)
+
+    print("[ ****** ] here is the dataframe contain: ")
+
+    df.show(10)
+    df_debug.show(10)
 
     val columns = df.schema.fields.map(_.name)
-    val selectiveDifferences = columns.map(col => df.select(col).except(dfx.select(col)))
+    val selectiveDifferences = columns.map(col => df.select(col).except(df_debug.select(col)))
 
     print("[ *** ] Selective Differences")
+
+    val outer_join = df.join(df_debug, df("key") === df_debug("key"), "left_outer")
+
+    outer_join.show(10)
+
+    print("[ **** ] We have : " + outer_join.count() + " differents rows")
 
     // selectiveDifferences.toString
 
     print("[ *** ] Selective Differences only diff columns")
 
-    selectiveDifferences.map(diff => {if(diff.count > 0) diff.show})
+    // selectiveDifferences.map(diff => {if(diff.count > 0) diff.show})
 
     println("[ *** ] Ending HBase Configuration cluster 1")
 
