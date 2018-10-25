@@ -36,11 +36,42 @@ import org.apache.spark.sql.{SQLContext, _}
 import org.apache.spark.sql.execution.datasources.hbase._
 import org.apache.spark.{SparkConf, SparkContext}
 
+import org.apache.spark.sql.functions._
+
+
 object SparkReadHBaseTable {
 
   case class hVar(rowkey: Int, colFamily: String, colQualifier: String, colDatetime: Long, colDatetimeStr: String, colType: String, colValue: String)
 
   def main(args: Array[String]) {
+
+    // Create difference between dataframe function
+
+    def diff(key: String, df1: DataFrame, df2: DataFrame): DataFrame = {
+      val fields = df1.schema.fields.map(_.name)
+      val diffColumnName = "Diff"
+
+      df1
+        .join(df2, df1(key) === df2(key), "full_outer")
+        .withColumn(
+          diffColumnName,
+          when(df1(key).isNull, "New row in DataFrame 2")
+            .otherwise(
+              when(df2(key).isNull, "New row in DataFrame 1")
+                .otherwise(
+                  concat_ws("",
+                    fields.map(f => when(df1(f) !== df2(f), s"$f ").otherwise("")):_*
+                  )
+                )
+            )
+        )
+        .filter(col(diffColumnName) !== "")
+        .select(
+          fields.map(f =>
+            when(df1(key).isNotNull, df1(f)).otherwise(df2(f)).alias(f)
+          ) :+ col(diffColumnName):_*
+        )
+    }
 
     // Get Start time
 
@@ -91,7 +122,7 @@ object SparkReadHBaseTable {
     print("[ ****** ] define schema table customer_info ")
 
     def customerinfodebugcatalog= s"""{
-        "table":{"namespace":"default", "name":"customer_info_debug"},
+        "table":{"namespace":"default", "name":"customer_info_x"},
         "rowkey":"key",
         "columns":{
         "key":{"cf":"rowkey", "col":"key", "type":"string"},
@@ -143,6 +174,9 @@ object SparkReadHBaseTable {
     val outer_join = df.join(df_debug, df("key") === df_debug("key"), "left_outer")
 
     outer_join.show(10)
+
+    diff("key", df, df_debug).show(false)
+    diff("key", df, df_debug).show(true)
 
     print("[ **** ] We have : " + outer_join.count() + " differents rows")
 
