@@ -182,7 +182,7 @@
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                  <mainClass>com.github.dfossouo.SparkHBase.SparkReadHBaseTable</mainClass>
+                  <mainClass>com.github.dfossouo.SparkHBase.SparkReadHBaseTable_DiscoverSchema</mainClass>
                 </transformer>
               </transformers>
             </configuration>

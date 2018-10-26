@@ -1,14 +1,18 @@
+
 /*******************************************************************************************************
 This code does the following:
   1) Read an HBase Snapshot, and convert to Spark RDD (snapshot name is defined in props file)
   2) Parse the records / KeyValue (extracting column family, column name, timestamp, value, etc)
   3) Perform general data processing - Filter the data based on rowkey range AND timestamp (timestamp threshold variable defined in props file)
   4) Write the results to HDFS (formatted for HBase BulkLoad, saved as HFileOutputFormat)
+
 Usage:
+
 spark-submit --class com.github.dfossouo.SparkHBase.SparkReadHBaseTable --jars /tmp/SparkHBaseExample-0.0.1-SNAPSHOT.jar /usr/hdp/current/phoenix-client/phoenix-client.jar /tmp/props
+
   ********************************************************************************************************/
 
-package com.github.dfossouo.SparkHBase;
+package main.scala.com.github.dfossouo.SparkHBase
 
 import java.text.SimpleDateFormat
 import java.util.{Calendar, Date}
@@ -34,40 +38,16 @@ import org.apache.spark.{SparkConf, SparkContext}
 
 import org.apache.spark.sql.functions._
 
+import org.apache.hadoop.hbase.mapreduce.TableInputFormat
 
-object SparkReadHBaseTable {
+
+object SparkReadHBaseTable_DiscoverSchema {
 
   case class hVar(rowkey: Int, colFamily: String, colQualifier: String, colDatetime: Long, colDatetimeStr: String, colType: String, colValue: String)
+  case class customer_info(custid: String, gender: String, age: String, level: String)
 
   def main(args: Array[String]) {
 
-    // Create difference between dataframe function
-
-    def diff(key: String, df1: DataFrame, df2: DataFrame): DataFrame = {
-      val fields = df1.schema.fields.map(_.name)
-      val diffColumnName = "Diff"
-
-      df1
-        .join(df2, df1(key) === df2(key), "full_outer")
-        .withColumn(
-          diffColumnName,
-          when(df1(key).isNull, "New row in DataFrame 2")
-            .otherwise(
-              when(df2(key).isNull, "New row in DataFrame 1")
-                .otherwise(
-                  concat_ws("",
-                    fields.map(f => when(df1(f) !== df2(f), s"$f ").otherwise("")):_*
-                  )
-                )
-            )
-        )
-        .filter(col(diffColumnName) !== "")
-        .select(
-          fields.map(f =>
-            when(df1(key).isNotNull, df1(f)).otherwise(df2(f)).alias(f)
-          ) :+ col(diffColumnName):_*
-        )
-    }
 
     // Get Start time
 
@@ -88,14 +68,14 @@ object SparkReadHBaseTable {
     val sparkConf = new SparkConf().setAppName("SparkReadHBaseTable")
     val sc = new SparkContext(sparkConf)
     val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-    import sqlContext.implicits._
 
     println("[ *** ] Creating HBase Configuration cluster 1")
-    val hConf = HBaseConfiguration.create()
+    @transient val hConf = HBaseConfiguration.create()
     hConf.setInt("timeout", 120000)
     hConf.set("hbase.rootdir", props.getOrElse("hbase.rootdir", "/tmp"))
     hConf.set("zookeeper.znode.parent", props.getOrElse("zookeeper.znode.parent", "/hbase-unsecure"))
     hConf.set("hbase.zookeeper.quorum", props.getOrElse("hbase.zookeeper.quorum", "hdpcluster-15377-master-0.field.hortonworks.com:2181"))
+    hConf.set(TableInputFormat.INPUT_TABLE, props.get("hbase.table.name").get)
 
     // Create Connection
     val connection: Connection = ConnectionFactory.createConnection(hConf)
@@ -106,78 +86,24 @@ object SparkReadHBaseTable {
 
     print("[ ****** ] define schema table emp ")
 
-    def customerinfocatalog= s"""{
-        "table":{"namespace":"default", "name":"$table"},
-        "rowkey":"key",
-        "columns":{
-        "key":{"cf":"rowkey", "col":"key", "type":"string"},
-        "custid":{"cf":"demographics", "col":"custid", "type":"string"},
-        "gender":{"cf":"demographics", "col":"gender", "type":"string"},
-        "age":{"cf":"demographics", "col":"age", "type":"string"},
-        "level":{"cf":"demographics", "col":"level", "type":"string"}
-        }
-        }""".stripMargin
+    // define HBaseRow and Timeseries
 
-    print("[ ****** ] define schema table customer_info ")
+    type HBaseRow = java.util.NavigableMap[Array[Byte], java.util.NavigableMap[Array[Byte], java.util.NavigableMap[java.lang.Long, Array[Byte]]]]
+    type CFTimeseriesRow = Map[Array[Byte], Map[Array[Byte], Map[Long, Array[Byte]]]]
+    type CFTimeseriesRowStr = scala.collection.immutable.Map[String, scala.collection.immutable.Map[String, scala.collection.immutable.Map[Long, String]]]
 
-    def customerinfodebugcatalog= s"""{
-        "table":{"namespace":"default", "name":"$tablex"},
-        "rowkey":"key",
-        "columns":{
-        "key":{"cf":"rowkey", "col":"key", "type":"string"},
-        "custid":{"cf":"demographics", "col":"custid", "type":"string"},
-        "gender":{"cf":"demographics", "col":"gender", "type":"string"},
-        "age":{"cf":"demographics", "col":"age", "type":"string"},
-        "level":{"cf":"demographics", "col":"level", "type":"string"}
-        }
-        }""".stripMargin
 
-    print("[ ****** ] Create DataFrame table emp ")
+   def rowToStrMap(navMap: CFTimeseriesRow): CFTimeseriesRowStr = navMap.map(cf =>
+      (Bytes.toString(cf._1), cf._2.map(col =>
+        (Bytes.toString(col._1), col._2.map(elem => (elem._1, Bytes.toString(elem._2)))))))
+    def navMapToMap(navMap: HBaseRow): CFTimeseriesRow =
+      navMap.asScala.toMap.map(cf =>
+        (cf._1, cf._2.asScala.toMap.map(col =>
+          (col._1, col._2.asScala.toMap.map(elem => (elem._1.toLong, elem._2))))))
 
-    def withCatalogInfo(customerinfocatalog: String): DataFrame = {
-      sqlContext
-        .read
-        .options(Map(HBaseTableCatalog.tableCatalog->customerinfocatalog, HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> (start_time_tblscan + 100).toString))
-        .format("org.apache.spark.sql.execution.datasources.hbase")
-        .load()
-    }
-
-    print("[ ****** ] Create DataFrame table customer_info ")
-
-    def withCatalogInfoDebug(customerinfodebugcatalog: String): DataFrame = {
-      sqlContext
-        .read
-        .options(Map(HBaseTableCatalog.tableCatalog->customerinfodebugcatalog, HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> (start_time_tblscan + 100).toString))
-        .format("org.apache.spark.sql.execution.datasources.hbase")
-        .load()
-    }
-
-    print("[ ****** ] declare DataFrame for table customer_info ")
-
-    val df = withCatalogInfo(customerinfocatalog)
-
-    print("[ ****** ] declare DataFrame for table customer_info_debug ")
-
-    val df_debug = withCatalogInfoDebug(customerinfodebugcatalog)
-
-    print("[ ****** ] here is the dataframe contain: ")
-
-    df.show(10)
-    df_debug.show(10)
-
-    val columns = df.schema.fields.map(_.name)
-    val selectiveDifferences = columns.map(col => df.select(col).except(df_debug.select(col)))
-
-    print("[ *** ] Selective Differences")
-
-    val outer_join = df.join(df_debug, df("key") === df_debug("key"), "left_outer")
-
-    outer_join.show(10)
-
-    diff("key", df, df_debug).show(false)
-    diff("key", df, df_debug).show(true)
-
-    print("[ **** ] We have : " + outer_join.count() + " differents rows")
+    val hBaseRDD = sc.newAPIHadoopRDD(hConf, classOf[TableInputFormat],
+      classOf[org.apache.hadoop.hbase.io.ImmutableBytesWritable],
+      classOf[org.apache.hadoop.hbase.client.Result]).map(kv => (kv._1.get(), navMapToMap(kv._2.getMap))).map(kv => (Bytes.toString(kv._1), rowToStrMap(kv._2))).take(10).foreach(println)
 
     // selectiveDifferences.toString
 
