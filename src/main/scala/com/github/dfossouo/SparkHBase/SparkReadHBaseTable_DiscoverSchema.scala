@@ -152,7 +152,7 @@ object SparkReadHBaseTable_DiscoverSchema {
     val listcustomerx = for(keyvalue <- kv)  finalSeqCustomer = finalSeqCustomer :+ new String(keyvalue.getQualifier)
 
 
-    val CustomerColumnLength = SeqCustomer.length
+    val CustomerColumnLength = finalSeqCustomer.length
 
     print(SeqCustomer.mkString("[",",","]"))
 
@@ -172,27 +172,18 @@ object SparkReadHBaseTable_DiscoverSchema {
     print("\"" + finalSeqCustomer(4).mkString("") + "\"")
     print("\"" + finalSeqCustomer(1).mkString("") + "\"")
 
-    val customer_family_1 = hBaseRDD_compare_brut.map(r => (Bytes.toString(r.getRow),
-      Bytes.toString(r.getValue(Bytes.toBytes("\"" +columnfamily + "\""), Bytes.toBytes("\"" + finalSeqCustomer(2).mkString("") + "\""))),
-      Bytes.toString(r.getValue(Bytes.toBytes("\"" +columnfamily + "\""), Bytes.toBytes("\"" + finalSeqCustomer(3).mkString("") + "\""))),
-      Bytes.toString(r.getValue(Bytes.toBytes("\"" +columnfamily + "\""), Bytes.toBytes("\"" + finalSeqCustomer(4).mkString("") + "\""))),
-      Bytes.toString(r.getValue(Bytes.toBytes("\"" +columnfamily + "\""), Bytes.toBytes("\"" + finalSeqCustomer(1).mkString("") + "\""))))
-    ).toDF("row","\"" + finalSeqCustomer(2).mkString("") + "\"","\"" + finalSeqCustomer(3).mkString("") + "\"","\"" + finalSeqCustomer(4).mkString("") + "\"","\"" + finalSeqCustomer(1).mkString("") + "\"")
-
     val customer_family = hBaseRDD_compare_brut.map(r => (Bytes.toString(r.getRow),
-      Bytes.toString(r.getValue(Bytes.toBytes("\"" +columnfamily + "\""), Bytes.toBytes("\"" + finalSeqCustomer(2).mkString("") + "\""))),
-      Bytes.toString(r.getValue(Bytes.toBytes("\"" +columnfamily + "\""), Bytes.toBytes("\"" + finalSeqCustomer(3).mkString("") + "\""))),
-      Bytes.toString(r.getValue(Bytes.toBytes("\"" +columnfamily + "\""), Bytes.toBytes("\"" + finalSeqCustomer(4).mkString("") + "\""))),
-      Bytes.toString(r.getValue(Bytes.toBytes("\"" +columnfamily + "\""), Bytes.toBytes("\"" + finalSeqCustomer(1).mkString("") + "\""))))
-    ).toDF("row","\"" + finalSeqCustomer(2).mkString("") + "\"","\"" + finalSeqCustomer(3).mkString("") + "\"","\"" + finalSeqCustomer(4).mkString("") + "\"","\"" + finalSeqCustomer(1).mkString("") + "\"")
+      Bytes.toString(r.getValue(Bytes.toBytes(columnfamily), Bytes.toBytes(finalSeqCustomer(2).mkString("")))),
+      Bytes.toString(r.getValue(Bytes.toBytes(columnfamily), Bytes.toBytes(finalSeqCustomer(3).mkString("")))),
+      Bytes.toString(r.getValue(Bytes.toBytes(columnfamily), Bytes.toBytes(finalSeqCustomer(4).mkString("")))),
+      Bytes.toString(r.getValue(Bytes.toBytes(columnfamily), Bytes.toBytes(finalSeqCustomer(1).mkString("")))))
+    ).toDF("row",finalSeqCustomer(2).mkString(""),finalSeqCustomer(3).mkString(""),finalSeqCustomer(4).mkString(""),finalSeqCustomer(1).mkString(""))
 
     customer_family.registerTempTable("customer_family")
 
     val df = sqlContext.sql("SELECT * FROM customer_family limit 10")
 
     df.collect.foreach(println)
-
-
 
     println("[ *** ] Creating HBase Configuration cluster 2")
     @transient val hConf2 = HBaseConfiguration.create()
