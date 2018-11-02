@@ -11,5 +11,8 @@
       </list>
     </option>
   </component>
+  <component name="ProjectPlainTextFileTypeManager">
+    <file url="file://$PROJECT_DIR$/src/main/scala/com/github/dfossouo/SparkHBase/HBaseSettings.scala" />
+  </component>
   <component name="ProjectRootManager" version="2" languageLevel="JDK_10" default="false" project-jdk-name="1.8" project-jdk-type="JavaSDK" />
 </project>

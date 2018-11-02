@@ -47,6 +47,17 @@ object SparkReadHBaseTable_DiscoverSchema {
   case class hVar(rowkey: Int, colFamily: String, colQualifier: String, colDatetime: Long, colDatetimeStr: String, colType: String, colValue: String)
   case class customer_info(custid: String, gender: String, age: String, level: String)
 
+  case class Customer(rowkey: String)
+
+  object Customer extends Serializable {
+    def parseCustomer(result: Result): Customer = {
+      val rowkey = Bytes.toString(result.getRow())
+      // remove time from rowKey, stats row key is for day
+      val p0 = rowkey.split(" ")(0)
+      Customer(p0)
+    }
+  }
+
   def main(args: Array[String]) {
 
 
@@ -63,6 +74,9 @@ object SparkReadHBaseTable_DiscoverSchema {
     val tbscan_end =   1540821806523L
     val start_time_tblscan = tbscan_start.toString()
     val end_time_tblscan = tbscan_end.toString()
+    val columnfamily = props.getOrElse("hbase.table.family", "demographics")
+    val columnfields = props.getOrElse("hbase.table.fields", "custid,gender,age,level").split(",")
+    val tablename = props.get("hbase.table.name")
 
     // Create Spark Application
     System.setProperty("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
@@ -98,6 +112,88 @@ object SparkReadHBaseTable_DiscoverSchema {
       classOf[org.apache.hadoop.hbase.io.ImmutableBytesWritable],
       classOf[org.apache.hadoop.hbase.client.Result])
 
+ //   val HBaseDF = hBaseRDD_compare.toDF()
+    val HBaseDF_schema = hBaseRDD_compare.first()
+    println("Here second column "+ HBaseDF_schema._2.raw())
+    println("Here first column " + HBaseDF_schema._1.get())
+
+    val hBaseRDD_compare_brut = sc.newAPIHadoopRDD(hConf, classOf[TableInputFormat],
+      classOf[org.apache.hadoop.hbase.io.ImmutableBytesWritable],
+      classOf[org.apache.hadoop.hbase.client.Result]).map(tuple => tuple._2)
+
+    val res = hBaseRDD_compare.take(10)
+
+    val rs = res(0)._2
+
+    val kv = rs.raw()
+
+    print(" [ Start of KV ROWS ]")
+
+    kv.take(10)
+
+    print(" [ End of KV ROWS ]")
+
+    var init = 0
+
+/*    val customer = for(keyvalue <- kv) {
+      println("rowkey:"+ new String(keyvalue.getRow))
+      println(" cf:"+new String(keyvalue.getFamily()) + " column:" + new String(keyvalue.getQualifier) + " " + "value:"+new String(keyvalue.getValue()))
+    }
+
+*/
+
+//    var SeqCustomer = Seq("demographics")
+    var SeqCustomer: Seq[String] = Seq()
+
+    val listcustomer = for(keyvalue <- kv)  SeqCustomer = SeqCustomer :+ new String(keyvalue.getQualifier)
+
+    var finalSeqCustomer = Seq("row")
+
+    val listcustomerx = for(keyvalue <- kv)  finalSeqCustomer = finalSeqCustomer :+ new String(keyvalue.getQualifier)
+
+
+    val CustomerColumnLength = SeqCustomer.length
+
+    print(SeqCustomer.mkString("[",",","]"))
+
+    print(" first one: " + SeqCustomer(CustomerColumnLength-2).mkString(""))
+    print(" second one: " + SeqCustomer(CustomerColumnLength-1).mkString(""))
+    print(" last one: " + SeqCustomer.mkString(",").split(",").mkString("\"", "\",\"", "\""))
+
+    print("\"" + SeqCustomer(0).mkString("") + "\"")
+    print("\"" + SeqCustomer(1).mkString("") + "\"")
+    print("\"" + SeqCustomer(2).mkString("") + "\"")
+    print("\"" + SeqCustomer(3).mkString("") + "\"")
+
+    println("Here is the finalSeqCustomer : " + finalSeqCustomer.mkString(",").split(",").mkString("\"", "\",\"", "\""))
+
+    print("\"" + finalSeqCustomer(2).mkString("") + "\"")
+    print("\"" + finalSeqCustomer(3).mkString("") + "\"")
+    print("\"" + finalSeqCustomer(4).mkString("") + "\"")
+    print("\"" + finalSeqCustomer(1).mkString("") + "\"")
+
+    val customer_family_1 = hBaseRDD_compare_brut.map(r => (Bytes.toString(r.getRow),
+      Bytes.toString(r.getValue(Bytes.toBytes("\"" +columnfamily + "\""), Bytes.toBytes("\"" + finalSeqCustomer(2).mkString("") + "\""))),
+      Bytes.toString(r.getValue(Bytes.toBytes("\"" +columnfamily + "\""), Bytes.toBytes("\"" + finalSeqCustomer(3).mkString("") + "\""))),
+      Bytes.toString(r.getValue(Bytes.toBytes("\"" +columnfamily + "\""), Bytes.toBytes("\"" + finalSeqCustomer(4).mkString("") + "\""))),
+      Bytes.toString(r.getValue(Bytes.toBytes("\"" +columnfamily + "\""), Bytes.toBytes("\"" + finalSeqCustomer(1).mkString("") + "\""))))
+    ).toDF("row","\"" + finalSeqCustomer(2).mkString("") + "\"","\"" + finalSeqCustomer(3).mkString("") + "\"","\"" + finalSeqCustomer(4).mkString("") + "\"","\"" + finalSeqCustomer(1).mkString("") + "\"")
+
+    val customer_family = hBaseRDD_compare_brut.map(r => (Bytes.toString(r.getRow),
+      Bytes.toString(r.getValue(Bytes.toBytes("\"" +columnfamily + "\""), Bytes.toBytes("\"" + finalSeqCustomer(2).mkString("") + "\""))),
+      Bytes.toString(r.getValue(Bytes.toBytes("\"" +columnfamily + "\""), Bytes.toBytes("\"" + finalSeqCustomer(3).mkString("") + "\""))),
+      Bytes.toString(r.getValue(Bytes.toBytes("\"" +columnfamily + "\""), Bytes.toBytes("\"" + finalSeqCustomer(4).mkString("") + "\""))),
+      Bytes.toString(r.getValue(Bytes.toBytes("\"" +columnfamily + "\""), Bytes.toBytes("\"" + finalSeqCustomer(1).mkString("") + "\""))))
+    ).toDF("row","\"" + finalSeqCustomer(2).mkString("") + "\"","\"" + finalSeqCustomer(3).mkString("") + "\"","\"" + finalSeqCustomer(4).mkString("") + "\"","\"" + finalSeqCustomer(1).mkString("") + "\"")
+
+    customer_family.registerTempTable("customer_family")
+
+    val df = sqlContext.sql("SELECT * FROM customer_family limit 10")
+
+    df.collect.foreach(println)
+
+
+
     println("[ *** ] Creating HBase Configuration cluster 2")
     @transient val hConf2 = HBaseConfiguration.create()
     hConf2.setInt("timeout", 120000)
@@ -117,27 +213,34 @@ object SparkReadHBaseTable_DiscoverSchema {
 
     print("[ **** ] Print Here is the Navigable Map which contain HBASE RDD - Cluster 2")
 
-    val hBaseRDD2 = sc.newAPIHadoopRDD(hConf2, classOf[TableInputFormat],
+    val hBaseRDDx = sc.newAPIHadoopRDD(hConf2, classOf[TableInputFormat],
       classOf[org.apache.hadoop.hbase.io.ImmutableBytesWritable],
       classOf[org.apache.hadoop.hbase.client.Result]).map(kv => (kv._1.get(), navMapToMap(kv._2.getMap))).map(kv => (Bytes.toString(kv._1), rowToStrMap(kv._2))).take(10).foreach(println)
 
     val hBaseRDDx_compare = sc.newAPIHadoopRDD(hConf2, classOf[TableInputFormat],
       classOf[org.apache.hadoop.hbase.io.ImmutableBytesWritable],
-      classOf[org.apache.hadoop.hbase.client.Result])
+      classOf[org.apache.hadoop.hbase.client.Result]).map(tuple => tuple._2)
 
-    print("[ *** ] the first cluster table have " + hBaseRDD_compare.count() + " rows in the desired timestamp ")
-    print("[ *** ] the second cluster table have " + hBaseRDDx_compare.count() + " rows in the desired timestamp ")
+    val customerx = hBaseRDDx_compare.map(r => (Bytes.toString(r.getRow),
+      Bytes.toString(r.getValue(Bytes.toBytes("demographics"), Bytes.toBytes("custid"))),
+      Bytes.toString(r.getValue(Bytes.toBytes("demographics"), Bytes.toBytes("gender"))),
+      Bytes.toString(r.getValue(Bytes.toBytes("demographics"), Bytes.toBytes("level"))),
+      Bytes.toString(r.getValue(Bytes.toBytes("demographics"), Bytes.toBytes("age")))) //
+    ).toDF("row", "custid", "gender", "level", "age")
 
-    // selectiveDifferences.toString
+    customerx.registerTempTable("customerx")
+
+    val df2 = sqlContext.sql("SELECT * FROM customerx limit 10")
+
+    df2.collect.foreach(println)
 
     print("[ *** ] Selective Differences only diff columns")
 
-    val hBaseDiffRDD = hBaseRDD_compare.join(hBaseRDDx_compare)
+//    print(" [ ***** ] We have in the leftOuterJoin: " + joins + " Lines")
 
-    print(" [ ***** ] We have in the leftOuterJoin: " + hBaseDiffRDD.count() + " Lines")
+//    print(" [ ***** ] Here is the result of join " + joins.count()
+//     + " [ ******** ]")
 
-    print(" [ ***** ] Here is the result of join " + hBaseDiffRDD.take(10).foreach(println)
-     + " [ ******** ]")
 
     // selectiveDifferences.map(diff => {if(diff.count > 0) diff.show})
 
