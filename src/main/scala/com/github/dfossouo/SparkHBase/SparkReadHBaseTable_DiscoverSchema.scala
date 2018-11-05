@@ -173,10 +173,16 @@ object SparkReadHBaseTable_DiscoverSchema {
     print("\"" + finalSeqCustomer(1).mkString("") + "\"")
 
     val customer_family = hBaseRDD_compare_brut.map(r => (Bytes.toString(r.getRow),
-      Bytes.toString(r.getValue(Bytes.toBytes(columnfamily), Bytes.toBytes(finalSeqCustomer(2).mkString("")))),
-      Bytes.toString(r.getValue(Bytes.toBytes(columnfamily), Bytes.toBytes(finalSeqCustomer(3).mkString("")))),
-      Bytes.toString(r.getValue(Bytes.toBytes(columnfamily), Bytes.toBytes(finalSeqCustomer(4).mkString("")))),
-      Bytes.toString(r.getValue(Bytes.toBytes(columnfamily), Bytes.toBytes(finalSeqCustomer(1).mkString("")))))
+      for(i <- 2 to CustomerColumnLength-1){
+        if(i == CustomerColumnLength-1 ){
+          println(Bytes.toString(r.getValue(Bytes.toBytes(columnfamily), Bytes.toBytes(finalSeqCustomer(2).mkString("")))))
+
+        }
+        else
+          println(Bytes.toString(r.getValue(Bytes.toBytes(columnfamily), Bytes.toBytes(finalSeqCustomer(2).mkString("")))) + ",")
+
+      }
+      ,Bytes.toString(r.getValue(Bytes.toBytes(columnfamily), Bytes.toBytes(finalSeqCustomer(1).mkString("")))))
     ).toDF("row",finalSeqCustomer(2).mkString(""),finalSeqCustomer(3).mkString(""),finalSeqCustomer(4).mkString(""),finalSeqCustomer(1).mkString(""))
 
     customer_family.registerTempTable("customer_family")
