@@ -1,0 +1,66 @@
+##############################################################
+#
+# General Props
+#
+##############################################################
+hbase.rootdir=/apps/hbase/data
+hbase.zookeeper.quorum=hdpcluster-15377-master-0.field.hortonworks.com,hdpcluster-15377-compute-2.field.hortonworks.com,hdpcluster-15377-worker-1.field.hortonworks.com
+zookeeper.znode.parent=/hbase-unsecure
+hbase.snapshot.path=/user/dfossouo
+
+hbase.rootdir_x=/apps/hbase/data
+hbase.zookeeper.quorum_x=hdpcluster-15377-master-0.field.hortonworks.com,hdpcluster-15377-compute-2.field.hortonworks.com,hdpcluster-15377-worker-1.field.hortonworks.com
+zookeeper.znode.parent_x=/hbase-unsecure
+hbase.snapshot.path_x=/user/dfossouo
+
+
+##############################################################
+#
+# Props for SparkReadHBaseSnapshot
+#
+##############################################################
+hbase.snapshot.name=hbase_simulated_50m
+hbase.snapshot.versions=3
+datetime_threshold=2018-10-16 11:24:08:000
+
+hbase.snapshot.name_x=hbase_simulated_50mx
+hbase.snapshot.versions_x=3
+hbase.table.rowkey_start="1"
+hbase.table.rowkey_end="1000"
+datetime_threshold_x=2018-10-16 11:24:08:000
+
+##############################################################
+#
+# Props for SparkReadHBaseTable
+#
+##############################################################
+hbase.table.name=customer_info
+hbase.table.versions=3
+datetime_threshold=2018-10-16 11:24:08:000
+
+hbase.table.name_x=customer_info_debug
+hbase.table.versions_x=3
+datetime_threshold_x=2018-10-16 11:24:08:000
+hbase.table.start_time=1540365233000L
+hbase.table.family=demographics
+hbase.table.fields=custid,gender,age,level
+
+
+hbase.table.schema=s"""{
+                         "table":{"namespace":"default", "name":"customer_info"},
+                         "rowkey":"key",
+                         "columns":{
+                         "custid":{"cf":"rowkey", "col":"custid", "type":"string"},
+                         "gender":{"cf":"demographics", "col":"gender", "type":"string"},
+                         "age":{"cf":"demographics", "col":"age", "type":"string"},
+                         "level":{"cf":"demographics", "col":"level", "type":"string"}
+                         }
+                        }""".stripMargin
+
+##############################################################
+#
+# Props for SimulateAndBulkLoadHBaseData
+#
+##############################################################
+simulated_tablename=hbase_simulated_50m
+simulated_records=50000000

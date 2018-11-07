@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: org.apache.hbase:hbase-metrics:2.0.0.3.0.0.4-42">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/apache/hbase/hbase-metrics/2.0.0.3.0.0.4-42/hbase-metrics-2.0.0.3.0.0.4-42.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/org/apache/hbase/hbase-metrics/2.0.0.3.0.0.4-42/hbase-metrics-2.0.0.3.0.0.4-42-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/apache/hbase/hbase-metrics/2.0.0.3.0.0.4-42/hbase-metrics-2.0.0.3.0.0.4-42-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
