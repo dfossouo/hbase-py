@@ -42,13 +42,14 @@ object SparkReadHBaseTable_DiscoverSchema {
   def main(args: Array[String]) {
 
     // Create difference between dataframe function
+    import org.apache.spark.sql.DataFrame
 
     def diff(key: String, df1: DataFrame, df2: DataFrame): DataFrame = {
-      val fields = df1.schema.fields.map(_.name)
+      val fields = df1.columns
       val diffColumnName = "Diff"
 
       df1
-        .join(df2, df1(key) === df2(key), "full_outer")
+        .join(df2, df1(key).equalTo(df2(key)), "full_outer")
         .withColumn(
           diffColumnName,
           when(df1(key).isNull, "New row in DataFrame 2")
@@ -56,12 +57,12 @@ object SparkReadHBaseTable_DiscoverSchema {
               when(df2(key).isNull, "New row in DataFrame 1")
                 .otherwise(
                   concat_ws("",
-                    fields.map(f => when(df1(f) !== df2(f), s"$f ").otherwise("")):_*
+                    fields.map(f => when(df1(f).notEqual(df2(f)), s"$f ").otherwise("")):_*
                   )
                 )
             )
         )
-        .filter(col(diffColumnName) !== "")
+        .filter(col(diffColumnName) =!= "")
         .select(
           fields.map(f =>
             when(df1(key).isNotNull, df1(f)).otherwise(df2(f)).alias(f)
@@ -110,8 +111,8 @@ object SparkReadHBaseTable_DiscoverSchema {
         "table":{"namespace":"default", "name":"$table"},
         "rowkey":"key",
         "columns":{
-        "key":{"cf":"rowkey", "col":"key", "type":"string"},
-        "custid":{"cf":"demographics", "col":"", "type":"map<string, string>"}
+        "rowkey":{"cf":"rowkey", "col":"key", "type":"string"},
+        "data":{"cf":"demographics", "col":"", "type":"map<string, string>"}
         }
         }""".stripMargin
 
@@ -121,8 +122,8 @@ object SparkReadHBaseTable_DiscoverSchema {
         "table":{"namespace":"default", "name":"$tablex"},
         "rowkey":"key",
         "columns":{
-        "key":{"cf":"rowkey", "col":"key", "type":"string"},
-        "custid":{"cf":"demographics", "col":"", "type":"map<string, string>"}
+        "rowkey":{"cf":"rowkey", "col":"key", "type":"string"},
+        "data":{"cf":"demographics", "col":"", "type":"map<string, string>"}
         }
         }""".stripMargin
 
@@ -150,6 +151,10 @@ object SparkReadHBaseTable_DiscoverSchema {
 
     val df = withCatalogInfo(customerinfocatalog)
 
+    print("Here are the columns " + df.columns.foreach(println))
+
+    df.columns.map(f => print(f))
+
     print("[ ****** ] declare DataFrame for table customer_info_debug ")
 
     val df_debug = withCatalogInfoDebug(customerinfodebugcatalog)
@@ -161,14 +166,25 @@ object SparkReadHBaseTable_DiscoverSchema {
 
     print("[ *** ] Selective Differences")
 
-    diff("key", df, df_debug).show(false)
-    diff("key", df, df_debug).show(true)
+    val columns = df.columns
+
+    print("[ *** ] Selective Differences - step1")
+
+    df.select($"rowkey", size($"data").as("count")).show(false)
+    df.select($"rowkey", explode($"data")).show(false)
+    df_debug.select($"rowkey", explode($"data")).show(false)
+
+    val df1 = df.select($"rowkey", explode($"data"))
+    val df2 = df_debug.select($"rowkey", explode($"data"))
+
+    diff("rowkey",df1,df2).show(false)
+
 
     // selectiveDifferences.toString
 
     print("[ *** ] Selective Differences only diff columns")
 
-    // selectiveDifferences.map(diff => {if(diff.count > 0) diff.show})
+    print("[ ************** ] Here is the number of different rows " + diff("rowkey",df1,df2).count())
 
     println("[ *** ] Ending HBase Configuration cluster 1")
 
