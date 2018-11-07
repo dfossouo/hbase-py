@@ -156,8 +156,8 @@ object SparkReadHBaseTable_DiscoverSchema {
 
     print("[ ****** ] here is the dataframe contain: ")
 
-    df.show(10)
-    df_debug.show(10)
+    df.show(10,false)
+    df_debug.show(10,false)
 
     print("[ *** ] Selective Differences")
 
