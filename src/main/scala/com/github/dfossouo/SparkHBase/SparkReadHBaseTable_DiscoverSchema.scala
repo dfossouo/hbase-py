@@ -44,30 +44,12 @@ object SparkReadHBaseTable_DiscoverSchema {
     // Create difference between dataframe function
     import org.apache.spark.sql.DataFrame
 
-    def diff(key: String, df1: DataFrame, df2: DataFrame): DataFrame = {
+    def diff(rowkey: String,key: String,value: String, df1: DataFrame, df2: DataFrame): DataFrame = {
       val fields = df1.columns
       val diffColumnName = "Diff"
 
-      df1
-        .join(df2, df1(key).equalTo(df2(key)), "full_outer")
-        .withColumn(
-          diffColumnName,
-          when(df1(key).isNull, "New row in DataFrame 2")
-            .otherwise(
-              when(df2(key).isNull, "New row in DataFrame 1")
-                .otherwise(
-                  concat_ws("",
-                    fields.map(f => when(df1(f).notEqual(df2(f)), s"$f ").otherwise("")):_*
-                  )
-                )
-            )
-        )
-        .filter(col(diffColumnName) =!= "")
-        .select(
-          fields.map(f =>
-            when(df1(key).isNotNull, df1(f)).otherwise(df2(f)).alias(f)
-          ) :+ col(diffColumnName):_*
-        )
+      df1.join(df2, (df1(key) === df2(key))&&(df1(rowkey) === df2(rowkey))&&(df1(value) =!= df2(value)), "inner")
+
     }
 
     // Get Start time
@@ -177,14 +159,14 @@ object SparkReadHBaseTable_DiscoverSchema {
     val df1 = df.select($"rowkey", explode($"data"))
     val df2 = df_debug.select($"rowkey", explode($"data"))
 
-    diff("rowkey",df1,df2).show(false)
+    diff("rowkey","key","value",df1,df2).show(false)
 
 
     // selectiveDifferences.toString
 
     print("[ *** ] Selective Differences only diff columns")
 
-    print("[ ************** ] Here is the number of different rows " + diff("rowkey",df1,df2).count())
+    print("[ ************** ] Here is the number of different rows " + diff("rowkey","key","value",df1,df2).count())
 
     println("[ *** ] Ending HBase Configuration cluster 1")
 
