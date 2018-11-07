@@ -27,7 +27,7 @@ hbase.snapshot.name_x=hbase_simulated_50mx
 hbase.snapshot.versions_x=3
 hbase.table.rowkey_start="1"
 hbase.table.rowkey_end="1000"
-datetime_threshold_x=2018-10-16 11:24:08:000
+
 
 ##############################################################
 #
@@ -36,7 +36,7 @@ datetime_threshold_x=2018-10-16 11:24:08:000
 ##############################################################
 hbase.table.name=customer_info
 hbase.table.versions=3
-datetime_threshold=2018-10-16 11:24:08:000
+
 
 hbase.table.name_x=customer_info_debug
 hbase.table.versions_x=3

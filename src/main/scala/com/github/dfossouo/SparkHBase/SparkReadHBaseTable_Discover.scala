@@ -8,34 +8,25 @@ Usage:
 spark-submit --class com.github.dfossouo.SparkHBase.SparkReadHBaseTable --jars /tmp/SparkHBaseExample-0.0.1-SNAPSHOT.jar /usr/hdp/current/phoenix-client/phoenix-client.jar /tmp/props
   ********************************************************************************************************/
 
-package com.github.dfossouo.SparkHBase;
+package main.scala.com.github.dfossouo.SparkHBase
 
-import java.text.SimpleDateFormat
-import java.util.{Calendar, Date}
+import java.util.Calendar
 
-import org.apache.hadoop.fs.Path
-import org.apache.hadoop.hbase.{CellUtil, HBaseConfiguration, TableName}
-import org.apache.hadoop.hbase.KeyValue.Type
+import org.apache.hadoop.hbase.HBaseConfiguration
 import org.apache.hadoop.hbase.client._
-import org.apache.hadoop.hbase.mapreduce.{TableInputFormat, TableSnapshotInputFormat}
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil
-import org.apache.hadoop.hbase.util.{Base64, Bytes}
-import org.apache.hadoop.mapreduce.Job
-import org.apache.spark
+import org.apache.hadoop.hbase.util.Base64
+import org.apache.spark.sql._
+import org.apache.spark.sql.execution.datasources.hbase._
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types.{StringType, StructField, StructType}
 import org.apache.spark.{SparkConf, SparkContext}
 
-import scala.collection.JavaConverters._
 import scala.collection.mutable.HashMap
 import scala.io.Source.fromFile
 
-import org.apache.spark.sql.{SQLContext, _}
-import org.apache.spark.sql.execution.datasources.hbase._
-import org.apache.spark.{SparkConf, SparkContext}
 
-import org.apache.spark.sql.functions._
-
-
-object SparkReadHBaseTable {
+object SparkReadHBaseTable_Discover {
 
   case class hVar(rowkey: Int, colFamily: String, colQualifier: String, colDatetime: Long, colDatetimeStr: String, colType: String, colValue: String)
 
@@ -88,7 +79,6 @@ object SparkReadHBaseTable {
     val sparkConf = new SparkConf().setAppName("SparkReadHBaseTable")
     val sc = new SparkContext(sparkConf)
     val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-    import sqlContext.implicits._
 
     println("[ *** ] Creating HBase Configuration cluster 1")
     val hConf = HBaseConfiguration.create()
@@ -133,6 +123,7 @@ object SparkReadHBaseTable {
         }""".stripMargin
 
     print("[ ****** ] Create DataFrame table emp ")
+
 
     def withCatalogInfo(customerinfocatalog: String): DataFrame = {
       sqlContext
