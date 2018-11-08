@@ -53,6 +53,12 @@ object SparkReadHBaseTable_DiscoverSchema {
 
     }
 
+    def diff_row(rowkey: String,key1: String, value1: String, key2: String, value2: String, df1: DataFrame): DataFrame = {
+      val fields = df1.columns
+      val diffColumnName = "Diff"
+      df1.where(df1.col(key1).isNotNull or df1.col(key1).isNotNull)
+    }
+
     // Get Start time
 
     val start_time = Calendar.getInstance()
@@ -115,7 +121,7 @@ object SparkReadHBaseTable_DiscoverSchema {
     def withCatalogInfo(customerinfocatalog: String): DataFrame = {
       sqlContext
         .read
-        .options(Map(HBaseTableCatalog.tableCatalog->customerinfocatalog,HBaseRelation.RESTRICTIVE -> "HBaseRelation.Restrictive.none",HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> (start_time_tblscan + 100).toString))
+        .options(Map(HBaseTableCatalog.tableCatalog->customerinfocatalog,HBaseRelation.RESTRICTIVE -> "HBaseRelation.Restrictive.none",HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> "1541670972970".toString))
         .format("org.apache.spark.sql.execution.datasources.hbase")
         .load()
     }
@@ -160,14 +166,29 @@ object SparkReadHBaseTable_DiscoverSchema {
     val df1 = df.select($"rowkey", explode($"data"))
     val df2 = df_debug.select($"rowkey", explode($"data"))
 
-    diff("rowkey","key","value",df1,df2).show(false)
+    val df_difference_value = diff("rowkey","key","value",df1,df2)
+
+    df_difference_value.show(false)
+
+    val dfjoin = df1.join(df2,Seq("rowkey"),"fullouter")
+
+    dfjoin.show(false)
+
+    val colNames = Seq("rowkey", "key1", "value1", "key2", "value2")
+
+    val newDF = dfjoin.toDF(colNames: _*)
+
+    val df_difference_columns = diff_row("rowkey","key1","value1", "key2", "value2",newDF)
+
+    df_difference_columns.show(false)
 
 
     // selectiveDifferences.toString
 
     print("[ *** ] Selective Differences only diff columns")
 
-    print("[ ************** ] Here is the number of different rows " + diff("rowkey","key","value",df1,df2).count())
+    print("[ ************** ] Here is the number of different value for same columns " + df_difference_value.count())
+    print("[ ************** ] Here is the number of different columns " + df_difference_columns.count())
 
     println("[ *** ] Ending HBase Configuration cluster 1")
 
