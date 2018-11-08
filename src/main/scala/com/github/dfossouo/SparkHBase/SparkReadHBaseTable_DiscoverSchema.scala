@@ -1,11 +1,12 @@
 /*******************************************************************************************************
 This code does the following:
-  1) Read an HBase Snapshot, and convert to Spark RDD (snapshot name is defined in props file)
-  2) Parse the records / KeyValue (extracting column family, column name, timestamp, value, etc)
-  3) Perform general data processing - Filter the data based on rowkey range AND timestamp (timestamp threshold variable defined in props file)
-  4) Write the results to HDFS (formatted for HBase BulkLoad, saved as HFileOutputFormat)
+  1) Read the same HBase Table from two distinct or identical clusters (without knowing the schema of tables)
+  2) Extract specific time Range
+  3) Create two dataframes and compare them to give back lines where the tables are differents (only the columns where we have differences)
+
 Usage:
-spark-submit --class com.github.dfossouo.SparkHBase.SparkReadHBaseTable --jars /tmp/SparkHBaseExample-0.0.1-SNAPSHOT.jar /usr/hdp/current/phoenix-client/phoenix-client.jar /tmp/props
+SPARK_MAJOR_VERSION=2 spark-submit --class com.github.dfossouo.SparkHBase.SparkReadHBaseTable_DiscoverSchema --master yarn --deploy-mode client --driver-memory 1g --executor-memory 4g --executor-cores 1 --jars ./target/HBaseCRC-0.0.2-SNAPSHOT.jar /usr/hdp/current/phoenix-client/phoenix-client.jar /tmp/props2
+NB: props2 est un fichier qui contient les variables d'entrées du projet
   ********************************************************************************************************/
 
 package com.github.dfossouo.SparkHBase;
