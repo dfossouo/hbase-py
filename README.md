@@ -1,47 +1,18 @@
 # hbase-py
 
 ## Prerequisites 
-# Scala 2.12.7 
+# Scala 2.11
 # Sbt 1.2.4 
 # Java 1.8
-# In case of Errors during the compilation change the property inside README.md <scala.version>2.11</scala.version> 
+# Spark 2.3.0 - from HDP 
+# Maven 3.5.4
 
-1. Give right permission in Ranger 
+This code does the following:
+  1) Read the same HBase Table from two distinct or identical clusters (the schema of tables is required)
+  2) Extract specific time Range
+  3) Create two dataframes and compare them to give back lines where the tables are differents (only the columns where we have differences)
 
-The user who will run the script will need access to /user/hbase folder on HDFS. 
-
-Give the permission according to it. 
-
-Also give permission to the user to allow him to create or delete tables of the project. 
-
-
-2. Sample of Usage of the tables 
-
-Edit the file according to your cluster informations : 
-
-# User Inputs (could be moved to arguments)
-hostname            = 'hdpcluster-15377-worker-2.field.hortonworks.com'
-port                = 9999 # hbase thrift server port 
-table_name          = 'customer_info'
-columnfamily        = 'demographics'
-number_of_records   = 1000000
-batch_size          = 2000
-
-
-2. Load the data 
-
-[dfossouo@hdpcluster-15377-compute-2 hbasepy]$ python write_to_hbase.py 
-[ INFO ] Trying to connect to the HBase Thrift server at hdpcluster-15377-worker-2.field.hortonworks.com:9999
-[ INFO ] Successfully connected to the HBase Thrift server at hdpcluster-15377-worker-2.field.hortonworks.com:9999
-[ INFO ] Creating HBase table:  customer_info
-[ INFO ] Successfully created HBase table:  customer_info
-[ INFO ] Inserting 1000000 records into customer_info
-
-[ INFO ] Successfully inserted 1000000 records into customer_info in 174 seconds
-[ INFO ] Printing data records from the generated HBase table
-('1', {'demographics:level': 'diamond', 'demographics:age': '23', 'demographics:gender': 'male', 'demographics:custid': '7530879'})
-('2', {'demographics:level': 'platimum', 'demographics:age': '60', 'demographics:gender': 'male', 'demographics:custid': '1030564'})
-('3', {'demographics:level': 'gold', 'demographics:age': '99', 'demographics:gender': 'male', 'demographics:custid': '9144031'})
-('4', {'demographics:level': 'diamond', 'demographics:age': '21', 'demographics:gender': 'male', 'demographics:custid': '6349513'})
-('5', {'demographics:level': 'diamond', 'demographics:age': '48', 'demographics:gender': 'female', 'demographics:custid': '6985163'})
+Usage:
+SPARK_MAJOR_VERSION=2 spark-submit --class com.github.dfossouo.SparkHBase.SparkReadHBaseTable --master yarn --deploy-mode client --driver-memory 1g --executor-memory 4g --executor-cores 1 --jars ./target/HBaseCRC-0.0.2-SNAPSHOT.jar /usr/hdp/current/phoenix-client/phoenix-client.jar /tmp/props2
+NB: props2 est un fichier qui contient les variables d'entrées du projet
 
