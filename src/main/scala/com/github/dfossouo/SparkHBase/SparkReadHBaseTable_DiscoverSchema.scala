@@ -53,10 +53,8 @@ object SparkReadHBaseTable_DiscoverSchema {
 
     }
 
-    def diff_row(rowkey: String,key1: String, value1: String, key2: String, value2: String, df1: DataFrame): DataFrame = {
-      val fields = df1.columns
-      val diffColumnName = "Diff"
-      df1.where(df1.col(key1).isNotNull or df1.col(key1).isNotNull)
+    def diff_row(rowkey: String,key1: String, key2: String, df1: DataFrame): DataFrame = {
+      df1.where(df1.col(key1).isNull or df1.col(key2).isNull)
     }
 
     // Get Start time
@@ -121,7 +119,7 @@ object SparkReadHBaseTable_DiscoverSchema {
     def withCatalogInfo(customerinfocatalog: String): DataFrame = {
       sqlContext
         .read
-        .options(Map(HBaseTableCatalog.tableCatalog->customerinfocatalog,HBaseRelation.RESTRICTIVE -> "HBaseRelation.Restrictive.none",HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> "1541670972970".toString))
+        .options(Map(HBaseTableCatalog.tableCatalog->customerinfocatalog,HBaseRelation.RESTRICTIVE -> "HBaseRelation.Restrictive.none",HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> "1541670972971".toString))
         .format("org.apache.spark.sql.execution.datasources.hbase")
         .load()
     }
@@ -131,7 +129,7 @@ object SparkReadHBaseTable_DiscoverSchema {
     def withCatalogInfoDebug(customerinfodebugcatalog: String): DataFrame = {
       sqlContext
         .read
-        .options(Map(HBaseTableCatalog.tableCatalog->customerinfodebugcatalog,HBaseRelation.RESTRICTIVE -> "HBaseRelation.Restrictive.none",HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> (start_time_tblscan + 100).toString))
+        .options(Map(HBaseTableCatalog.tableCatalog->customerinfodebugcatalog,HBaseRelation.RESTRICTIVE -> "HBaseRelation.Restrictive.none",HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> "1541670972971".toString))
         .format("org.apache.spark.sql.execution.datasources.hbase")
         .load()
     }
@@ -143,6 +141,7 @@ object SparkReadHBaseTable_DiscoverSchema {
     print("Here are the columns " + df.columns.foreach(println))
 
     df.columns.map(f => print(f))
+    df.show(10,false)
 
     print("[ ****** ] declare DataFrame for table customer_info_debug ")
 
@@ -150,17 +149,33 @@ object SparkReadHBaseTable_DiscoverSchema {
 
     print("[ ****** ] here is the dataframe contain: ")
 
-    df.show(10,false)
     df_debug.show(10,false)
 
-    print("[ *** ] Selective Differences")
+    print("[ *** ] Selective Differences - Get the count of each dataframe")
 
-    val columns = df.columns
+    val df_count = df.count()
+    val df_debug_count = df_debug.count()
 
-    print("[ *** ] Selective Differences - step1")
+    if(df_count.equals(df_debug_count))
+      print("[ ******* ] The number of row is the same between cluster 1 and 2 we have : " + df_count + " rows ")
+    else
+      print("[ ******* ] The number of row is different between dataframe " + "cluster 1 have " + df_count + " rows and cluster 2 have "
+        + df_debug_count + " rows" )
 
-    df.select($"rowkey", size($"data").as("count")).show(false)
-    df.select($"rowkey", explode($"data")).show(false)
+    print("[ *** ] Selective Differences - Get the count of each columns by rowkey")
+
+    val counts_df1 = df.select($"rowkey", size($"data").as("count"))
+
+    val counts_df2= df_debug.select($"rowkey", size($"data").as("count"))
+
+    print("[ ********* +++++++ Here start the difference over columns +++++++++++ ********* ]")
+
+    counts_df1.show(false)
+    counts_df2.show(false)
+
+    // Section 1 : If you want to display columns per row
+/*    df.select($"rowkey", explode($"data")).show(false)
+
     df_debug.select($"rowkey", explode($"data")).show(false)
 
     val df1 = df.select($"rowkey", explode($"data"))
@@ -168,29 +183,51 @@ object SparkReadHBaseTable_DiscoverSchema {
 
     val df_difference_value = diff("rowkey","key","value",df1,df2)
 
-    df_difference_value.show(false)
+    df_difference_value.show(false) */
 
-    val dfjoin = df1.join(df2,Seq("rowkey"),"fullouter")
+    // Now taking only rowkey and columns
 
+
+    // Uncomment this if secition 1 if uncommented
+/*    val dfjoin = counts_df1.join(counts_df2,(counts_df1("rowkey")===counts_df2("rowkey"))&&(counts_df1("count") =!= counts_df2("count")),"inner")
+
+    print("[ ****** ] Here is the Inner Join List of rowkey with different column")
     dfjoin.show(false)
 
-    val colNames = Seq("rowkey", "key1", "value1", "key2", "value2")
 
-    val newDF = dfjoin.toDF(colNames: _*)
+    val dfjoin = counts_df1.join(counts_df2,(counts_df1("rowkey")===counts_df2("rowkey"))&&(counts_df1("count") =!= counts_df2("count")),"inner")
 
-    val df_difference_columns = diff_row("rowkey","key1","value1", "key2", "value2",newDF)
+    dfjoin.join(df,dfjoin("rowkey")===df("rowkey")).join(df_debug,dfjoin("rowkey")===df_debug("rowkey")).show(false) */
 
-    df_difference_columns.show(false)
+    // Now that we compared the nb of rows between two tables we need to go deep dive and show the row which are differents
 
+    print("Step 1 ---------------------------------------------------------------- ")
 
-    // selectiveDifferences.toString
+    val dfjoin = counts_df1.join(counts_df2,(counts_df1("rowkey")===counts_df2("rowkey"))&&(counts_df1("count") =!= counts_df2("count")),"inner")
 
-    print("[ *** ] Selective Differences only diff columns")
+    val colNames = Seq("rowkey1", "count1", "rowkey2","count2")
+    dfjoin.toDF(colNames: _*)
 
-    print("[ ************** ] Here is the number of different value for same columns " + df_difference_value.count())
-    print("[ ************** ] Here is the number of different columns " + df_difference_columns.count())
+    print("Step 2 ----------------------------------------------------------------")
+    // show the different MaType
+    // Update columns names
+    val colNames = Seq("rowkey1", "count1", "rowkey2","count2")
 
-    println("[ *** ] Ending HBase Configuration cluster 1")
+    val newdfjoin = dfjoin.toDF(colNames: _*)
+
+    val dftemp = newdfjoin.join(df,newdfjoin("rowkey1")===df("rowkey")).select("rowkey1","data").toDF("rowkey1","datatable1")
+
+    print("Step 3 ----------------------------------------------------------------")
+
+    dftemp.join(df_debug,dftemp("rowkey1")===df_debug("rowkey")).select("rowkey1","datatable1","data").toDF("rowkey","datatable1","datatable2").show(false)
+
+    /*   val colNames = Seq("rowkey", "key1", "key2")
+
+       val newDF = dfjoin.toDF(colNames: _*)
+
+      val df_difference_columns = diff_row("rowkey","key1", "key2",newDF)
+
+       df_difference_columns.show(false) */
 
     connection.close()
 
