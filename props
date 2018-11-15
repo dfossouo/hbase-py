@@ -9,7 +9,7 @@ zookeeper.znode.parent=/hbase-unsecure
 hbase.snapshot.path=/user/dfossouo
 
 hbase.rootdir_x=/apps/hbase/data
-hbase.zookeeper.quorum_x=hdpcluster-15377-master-0.field.hortonworks.com,hdpcluster-15377-compute-2.field.hortonworks.com,hdpcluster-15377-worker-1.field.hortonworks.com
+hbase.zookeeper.quorum_x=c325-node4.field.hortonworks.com,c325-node3.field.hortonworks.com,c325-node2.field.hortonworks.com
 zookeeper.znode.parent_x=/hbase-unsecure
 hbase.snapshot.path_x=/user/dfossouo
 

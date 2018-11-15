@@ -205,15 +205,18 @@ object SparkReadHBaseTable_DiscoverSchema {
 
     val dfjoin = counts_df1.join(counts_df2,(counts_df1("rowkey")===counts_df2("rowkey"))&&(counts_df1("count") =!= counts_df2("count")),"inner")
 
-    val colNames = Seq("rowkey1", "count1", "rowkey2","count2")
-    dfjoin.toDF(colNames: _*)
+    val colNames_1 = Seq("rowkey1", "count1", "rowkey2","count2")
+    dfjoin.toDF(colNames_1: _*)
 
     print("Step 2 ----------------------------------------------------------------")
     // show the different MaType
     // Update columns names
-    val colNames = Seq("rowkey1", "count1", "rowkey2","count2")
+    val colNames_2 = Seq("rowkey1", "count1", "rowkey2","count2")
 
-    val newdfjoin = dfjoin.toDF(colNames: _*)
+    dfjoin
+
+
+    val newdfjoin = dfjoin.toDF(colNames_2: _*)
 
     val dftemp = newdfjoin.join(df,newdfjoin("rowkey1")===df("rowkey")).select("rowkey1","data").toDF("rowkey1","datatable1")
 
