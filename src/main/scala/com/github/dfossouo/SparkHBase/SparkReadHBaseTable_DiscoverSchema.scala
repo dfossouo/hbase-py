@@ -106,17 +106,6 @@ object SparkReadHBaseTable_DiscoverSchema {
     print("[ ****** ] define schema table customer_info ")
 
 
-    println("[ *** ] Creating HBase Configuration cluster 2")
-
-    def customerinfodebugcatalog= s"""{
-        "table":{"namespace":"default", "name":"$tablex"},
-        "rowkey":"key",
-        "columns":{
-        "rowkey":{"cf":"rowkey", "col":"key", "type":"string"},
-        "data":{"cf":"demographics", "col":"", "type":"map<string, string>"}
-        }
-        }""".stripMargin
-
     print("[ ****** ] Create DataFrame table emp ")
 
     def withCatalogInfo(customerinfocatalog: String): DataFrame = {
@@ -129,11 +118,35 @@ object SparkReadHBaseTable_DiscoverSchema {
 
     print("[ ****** ] Create DataFrame table customer_info ")
 
+    print("[ ****** ] declare DataFrame for table customer_info ")
+
+    val df = withCatalogInfo(customerinfocatalog)
+
+    print("Here are the columns " + df.columns.foreach(println))
+
+    df.columns.map(f => print(f))
+    df.show(10,false)
+
+    connection.close()
+
+
+    println("[ *** ] Creating HBase Configuration cluster 2")
+
     val hConf2 = HBaseConfiguration.create()
     hConf2.setInt("timeout", 120000)
     hConf2.set("hbase.rootdir_x", "/tmp")
     hConf2.set("zookeeper.znode.parent_x", "/hbase-unsecure")
     hConf2.set("hbase.zookeeper.quorum_x", "hdpcluster-15377-master-0.field.hortonworks.com:2181")
+
+
+    def customerinfodebugcatalog= s"""{
+        "table":{"namespace":"default", "name":"$tablex"},
+        "rowkey":"key",
+        "columns":{
+        "rowkey":{"cf":"rowkey", "col":"key", "type":"string"},
+        "data":{"cf":"demographics", "col":"", "type":"map<string, string>"}
+        }
+        }""".stripMargin
 
     // Create Connection
     val connection2: Connection = ConnectionFactory.createConnection(hConf2)
@@ -148,15 +161,6 @@ object SparkReadHBaseTable_DiscoverSchema {
         .load()
     }
 
-    print("[ ****** ] declare DataFrame for table customer_info ")
-
-    val df = withCatalogInfo(customerinfocatalog)
-
-    print("Here are the columns " + df.columns.foreach(println))
-
-    df.columns.map(f => print(f))
-    df.show(10,false)
-
     print("[ ****** ] declare DataFrame for table customer_info_debug ")
 
     val df_debug = withCatalogInfoDebug(customerinfodebugcatalog)
@@ -164,6 +168,8 @@ object SparkReadHBaseTable_DiscoverSchema {
     print("[ ****** ] here is the dataframe contain: ")
 
     df_debug.show(10,false)
+
+    connection2.close()
 
     print("[ *** ] Selective Differences - Get the count of each dataframe")
 
