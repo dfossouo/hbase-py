@@ -111,7 +111,7 @@ object SparkReadHBaseTable_DiscoverSchema {
     def withCatalogInfo(customerinfocatalog: String): DataFrame = {
       sqlContext
         .read
-        .options(Map(HBaseTableCatalog.tableCatalog->customerinfocatalog,HBaseRelation.RESTRICTIVE -> "HBaseRelation.Restrictive.none",HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> "1541670972971".toString))
+        .options(Map(HBaseTableCatalog.tableCatalog->customerinfocatalog,HBaseRelation.RESTRICTIVE -> "HBaseRelation.Restrictive.none",HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> "15416709729711".toString))
         .format("org.apache.spark.sql.execution.datasources.hbase")
         .load()
     }
@@ -156,7 +156,7 @@ object SparkReadHBaseTable_DiscoverSchema {
     def withCatalogInfoDebug(customerinfodebugcatalog: String): DataFrame = {
       sqlContext
         .read
-        .options(Map(HBaseTableCatalog.tableCatalog->customerinfodebugcatalog,HBaseRelation.RESTRICTIVE -> "HBaseRelation.Restrictive.none",HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> "1541670972971".toString))
+        .options(Map(HBaseTableCatalog.tableCatalog->customerinfodebugcatalog,HBaseRelation.RESTRICTIVE -> "HBaseRelation.Restrictive.none",HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> "15416709729711".toString))
         .format("org.apache.spark.sql.execution.datasources.hbase")
         .load()
     }
