@@ -79,6 +79,7 @@ object SparkReadHBaseTable_DiscoverSchema {
     import sqlContext.implicits._
 
     println("[ *** ] Creating HBase Configuration cluster 1")
+
     val hConf = HBaseConfiguration.create()
     hConf.setInt("timeout", 120000)
     hConf.set("hbase.rootdir", "/tmp")
@@ -87,13 +88,6 @@ object SparkReadHBaseTable_DiscoverSchema {
 
     // Create Connection
     val connection: Connection = ConnectionFactory.createConnection(hConf)
-
-    val hbaseContext = new HBaseContext(sc, hConf, null)
-
-    val job = Job.getInstance(hConf)
-    val path = new Path(props.getOrElse("hbase.snapshot.path", "/tmp/"))
-    val snapName = props.getOrElse("hbase.snapshot.name", "customer_info_ss")
-    TableSnapshotInputFormat.setInput(job, snapName, path)
 
     print("connection created")
 
