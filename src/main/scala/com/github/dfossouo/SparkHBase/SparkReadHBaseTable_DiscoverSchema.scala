@@ -105,6 +105,9 @@ object SparkReadHBaseTable_DiscoverSchema {
 
     print("[ ****** ] define schema table customer_info ")
 
+
+    println("[ *** ] Creating HBase Configuration cluster 2")
+
     def customerinfodebugcatalog= s"""{
         "table":{"namespace":"default", "name":"$tablex"},
         "rowkey":"key",
@@ -125,6 +128,17 @@ object SparkReadHBaseTable_DiscoverSchema {
     }
 
     print("[ ****** ] Create DataFrame table customer_info ")
+
+    val hConf2 = HBaseConfiguration.create()
+    hConf2.setInt("timeout", 120000)
+    hConf2.set("hbase.rootdir_x", "/tmp")
+    hConf2.set("zookeeper.znode.parent_x", "/hbase-unsecure")
+    hConf2.set("hbase.zookeeper.quorum_x", "hdpcluster-15377-master-0.field.hortonworks.com:2181")
+
+    // Create Connection
+    val connection2: Connection = ConnectionFactory.createConnection(hConf2)
+
+    print("connection 2 created")
 
     def withCatalogInfoDebug(customerinfodebugcatalog: String): DataFrame = {
       sqlContext
