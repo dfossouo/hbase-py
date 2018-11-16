@@ -82,8 +82,8 @@ object SparkReadHBaseTable_DiscoverSchema {
     val hConf = HBaseConfiguration.create()
     hConf.setInt("timeout", 120000)
     hConf.set("hbase.rootdir", "/tmp")
-    hConf.set("zookeeper.znode.parent", "/hbase-unsecure")
-    hConf.set("hbase.zookeeper.quorum", "hdpcluster-15377-master-0.field.hortonworks.com:2181")
+    hConf.set("zookeeper.znode.parent", "zookeeper.znode.parent")
+    hConf.set("hbase.zookeeper.quorum", "hbase.zookeeper.quorum")
 
     // Create Connection
     val connection: Connection = ConnectionFactory.createConnection(hConf)
@@ -134,9 +134,9 @@ object SparkReadHBaseTable_DiscoverSchema {
 
     val hConf2 = HBaseConfiguration.create()
     hConf2.setInt("timeout", 120000)
-    hConf2.set("hbase.rootdir_x", "/tmp")
-    hConf2.set("zookeeper.znode.parent_x", "/hbase-unsecure")
-    hConf2.set("hbase.zookeeper.quorum_x", "hdpcluster-15377-master-0.field.hortonworks.com:2181")
+    hConf2.set("hbase.rootdir", "/tmp")
+    hConf2.set("zookeeper.znode.parent", "zookeeper.znode.parent_x")
+    hConf2.set("hbase.zookeeper.quorum", "hbase.zookeeper.quorum_x")
 
 
     def customerinfodebugcatalog= s"""{
