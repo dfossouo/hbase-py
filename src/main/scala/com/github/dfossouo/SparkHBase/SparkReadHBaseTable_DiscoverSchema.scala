@@ -20,6 +20,7 @@ import org.apache.hadoop.hbase.KeyValue.Type
 import org.apache.hadoop.hbase.client._
 import org.apache.hadoop.hbase.mapreduce.{TableInputFormat, TableSnapshotInputFormat}
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil
+import org.apache.hadoop.hbase.spark.HBaseContext
 import org.apache.hadoop.hbase.util.{Base64, Bytes}
 import org.apache.hadoop.mapreduce.Job
 import org.apache.spark
@@ -28,12 +29,11 @@ import org.apache.spark.{SparkConf, SparkContext}
 import scala.collection.JavaConverters._
 import scala.collection.mutable.HashMap
 import scala.io.Source.fromFile
-
 import org.apache.spark.sql.{SQLContext, _}
 import org.apache.spark.sql.execution.datasources.hbase._
 import org.apache.spark.{SparkConf, SparkContext}
-
 import org.apache.spark.sql.functions._
+import org.apache.spark.streaming.dstream
 
 
 object SparkReadHBaseTable_DiscoverSchema {
@@ -82,11 +82,18 @@ object SparkReadHBaseTable_DiscoverSchema {
     val hConf = HBaseConfiguration.create()
     hConf.setInt("timeout", 120000)
     hConf.set("hbase.rootdir", "/tmp")
-    hConf.set("zookeeper.znode.parent", "zookeeper.znode.parent")
-    hConf.set("hbase.zookeeper.quorum", "hbase.zookeeper.quorum")
+    hConf.set("zookeeper.znode.parent", "/hbase-unsecure")
+    hConf.set("hbase.zookeeper.quorum", "hdpcluster-15377-master-0.field.hortonworks.com,hdpcluster-15377-compute-2.field.hortonworks.com,hdpcluster-15377-worker-1.field.hortonworks.com:2181")
 
     // Create Connection
     val connection: Connection = ConnectionFactory.createConnection(hConf)
+
+    val hbaseContext = new HBaseContext(sc, hConf, null)
+
+    val job = Job.getInstance(hConf)
+    val path = new Path(props.getOrElse("hbase.snapshot.path", "/tmp/"))
+    val snapName = props.getOrElse("hbase.snapshot.name", "customer_info_ss")
+    TableSnapshotInputFormat.setInput(job, snapName, path)
 
     print("connection created")
 
@@ -129,15 +136,14 @@ object SparkReadHBaseTable_DiscoverSchema {
 
     connection.close()
 
-
     println("[ *** ] Creating HBase Configuration cluster 2")
 
     val hConf2 = HBaseConfiguration.create()
     hConf2.setInt("timeout", 120000)
-    hConf2.set("hbase.rootdir", "/tmp")
-    hConf2.set("zookeeper.znode.parent", "zookeeper.znode.parent_x")
-    hConf2.set("hbase.zookeeper.quorum", "hbase.zookeeper.quorum_x")
+    hConf2.set("zookeeper.znode.parent_x", "/hbase-unsecure")
+    hConf2.set("hbase.zookeeper.quorum_x", "c325-node4.field.hortonworks.com,c325-node3.field.hortonworks.com,c325-node2.field.hortonworks.com:2181")
 
+    val hbaseContext2 = new HBaseContext(sc, hConf2, null)
 
     def customerinfodebugcatalog= s"""{
         "table":{"namespace":"default", "name":"$tablex"},
@@ -253,6 +259,7 @@ object SparkReadHBaseTable_DiscoverSchema {
        df_difference_columns.show(false) */
 
     connection.close()
+    connection2.close()
 
   }
 
