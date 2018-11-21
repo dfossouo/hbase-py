@@ -1,11 +1,11 @@
 # hbase-py
 
 ## Prerequisites 
-# Scala 2.11
-# Sbt 1.2.4 
-# Java 1.8
-# Spark 2.3.0 - from HDP 
-# Maven 3.5.4
+### Scala 2.11
+### Sbt 1.2.4 
+### Java 1.8
+### Spark 2.3.0 - from HDP 
+### Maven 3.5.4
 
 # PART I - Static Schema 
 
