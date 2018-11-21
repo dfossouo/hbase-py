@@ -3,7 +3,6 @@ This code does the following:
   1) Read the same HBase Table from two distinct or identical clusters (without knowing the schema of tables)
   2) Extract specific time Range
   3) Create two dataframes and compare them to give back lines where the tables are differents (only the columns where we have differences)
-
 Usage:
 SPARK_MAJOR_VERSION=2 spark-submit --class com.github.dfossouo.SparkHBase.SparkReadHBaseTable_DiscoverSchema --master yarn --deploy-mode client --driver-memory 1g --executor-memory 4g --executor-cores 1 --jars ./target/HBaseCRC-0.0.2-SNAPSHOT.jar /usr/hdp/current/phoenix-client/phoenix-client.jar /tmp/props2
 NB: props2 est un fichier qui contient les variables d'entrées du projet
@@ -109,10 +108,16 @@ object SparkReadHBaseTable_DiscoverSchema {
 
     print("[ ****** ] Create DataFrame table emp ")
 
+    val connectionHbase = s"""{
+        "hbase.zookeeper.quorum":"hdpcluster-15377-master-0.field.hortonworks.com,hdpcluster-15377-compute-2.field.hortonworks.com,hdpcluster-15377-worker-1.field.hortonworks.com",
+        "zookeeper.znode.parent":"/hbase-unsecure"
+      }
+      """
+
     def withCatalogInfo(customerinfocatalog: String): DataFrame = {
       sqlContext
         .read
-        .options(Map(HBaseTableCatalog.tableCatalog->customerinfocatalog,HBaseRelation.RESTRICTIVE -> "HBaseRelation.Restrictive.none",HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> "15416709729711".toString))
+        .options(Map(HBaseTableCatalog.tableCatalog->customerinfocatalog,HBaseRelation.RESTRICTIVE -> "HBaseRelation.Restrictive.none",HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> "15416709729711".toString, HBaseRelation.HBASE_CONFIGURATION -> connectionHbase))
         .format("org.apache.spark.sql.execution.datasources.hbase")
         .load()
     }
@@ -153,10 +158,16 @@ object SparkReadHBaseTable_DiscoverSchema {
 
     print("connection 2 created")
 
+    val connectionHbase2 = s"""{
+        "hbase.zookeeper.quorum":"c325-node4.field.hortonworks.com,c325-node3.field.hortonworks.com,c325-node2.field.hortonworks.com:2181",
+        "zookeeper.znode.parent":"/hbase-unsecure"
+      }
+      """
+
     def withCatalogInfoDebug(customerinfodebugcatalog: String): DataFrame = {
       sqlContext
         .read
-        .options(Map(HBaseTableCatalog.tableCatalog->customerinfodebugcatalog,HBaseRelation.RESTRICTIVE -> "HBaseRelation.Restrictive.none",HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> "15416709729711".toString))
+        .options(Map(HBaseTableCatalog.tableCatalog->customerinfodebugcatalog,HBaseRelation.RESTRICTIVE -> "HBaseRelation.Restrictive.none",HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> "15416709729711".toString, HBaseRelation.HBASE_CONFIGURATION -> connectionHbase2))
         .format("org.apache.spark.sql.execution.datasources.hbase")
         .load()
     }
@@ -194,30 +205,22 @@ object SparkReadHBaseTable_DiscoverSchema {
     counts_df2.show(false)
 
     // Section 1 : If you want to display columns per row
-/*    df.select($"rowkey", explode($"data")).show(false)
-
-    df_debug.select($"rowkey", explode($"data")).show(false)
-
-    val df1 = df.select($"rowkey", explode($"data"))
-    val df2 = df_debug.select($"rowkey", explode($"data"))
-
-    val df_difference_value = diff("rowkey","key","value",df1,df2)
-
-    df_difference_value.show(false) */
+    /*    df.select($"rowkey", explode($"data")).show(false)
+        df_debug.select($"rowkey", explode($"data")).show(false)
+        val df1 = df.select($"rowkey", explode($"data"))
+        val df2 = df_debug.select($"rowkey", explode($"data"))
+        val df_difference_value = diff("rowkey","key","value",df1,df2)
+        df_difference_value.show(false) */
 
     // Now taking only rowkey and columns
 
 
     // Uncomment this if secition 1 if uncommented
-/*    val dfjoin = counts_df1.join(counts_df2,(counts_df1("rowkey")===counts_df2("rowkey"))&&(counts_df1("count") =!= counts_df2("count")),"inner")
-
-    print("[ ****** ] Here is the Inner Join List of rowkey with different column")
-    dfjoin.show(false)
-
-
-    val dfjoin = counts_df1.join(counts_df2,(counts_df1("rowkey")===counts_df2("rowkey"))&&(counts_df1("count") =!= counts_df2("count")),"inner")
-
-    dfjoin.join(df,dfjoin("rowkey")===df("rowkey")).join(df_debug,dfjoin("rowkey")===df_debug("rowkey")).show(false) */
+    /*    val dfjoin = counts_df1.join(counts_df2,(counts_df1("rowkey")===counts_df2("rowkey"))&&(counts_df1("count") =!= counts_df2("count")),"inner")
+        print("[ ****** ] Here is the Inner Join List of rowkey with different column")
+        dfjoin.show(false)
+        val dfjoin = counts_df1.join(counts_df2,(counts_df1("rowkey")===counts_df2("rowkey"))&&(counts_df1("count") =!= counts_df2("count")),"inner")
+        dfjoin.join(df,dfjoin("rowkey")===df("rowkey")).join(df_debug,dfjoin("rowkey")===df_debug("rowkey")).show(false) */
 
     // Now that we compared the nb of rows between two tables we need to go deep dive and show the row which are differents
 
@@ -245,11 +248,8 @@ object SparkReadHBaseTable_DiscoverSchema {
     dftemp.join(df_debug,dftemp("rowkey1")===df_debug("rowkey")).select("rowkey1","datatable1","data").toDF("rowkey","datatable1","datatable2").show(false)
 
     /*   val colNames = Seq("rowkey", "key1", "key2")
-
        val newDF = dfjoin.toDF(colNames: _*)
-
       val df_difference_columns = diff_row("rowkey","key1", "key2",newDF)
-
        df_difference_columns.show(false) */
 
     connection.close()
