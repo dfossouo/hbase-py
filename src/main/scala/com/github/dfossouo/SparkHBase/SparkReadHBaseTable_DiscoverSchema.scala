@@ -44,18 +44,6 @@ object SparkReadHBaseTable_DiscoverSchema {
     // Create difference between dataframe function
     import org.apache.spark.sql.DataFrame
 
-    def diff(rowkey: String,key: String,value: String, df1: DataFrame, df2: DataFrame): DataFrame = {
-      val fields = df1.columns
-      val diffColumnName = "Diff"
-
-      df1.join(df2, (df1(key) === df2(key))&&(df1(rowkey) === df2(rowkey))&&(df1(value) =!= df2(value)), "inner")
-
-    }
-
-    def diff_row(rowkey: String,key1: String, key2: String, df1: DataFrame): DataFrame = {
-      df1.where(df1.col(key1).isNull or df1.col(key2).isNull)
-    }
-
     // Get Start time
 
     val start_time = Calendar.getInstance()
@@ -83,22 +71,13 @@ object SparkReadHBaseTable_DiscoverSchema {
 
     println("[ *** ] Creating HBase Configuration cluster 1")
 
-    val hConf = HBaseConfiguration.create()
-    hConf.setInt("timeout", 120000)
-    hConf.set("hbase.rootdir", "/tmp")
-    hConf.set("zookeeper.znode.parent", "/hbase-unsecure")
-    hConf.set("hbase.zookeeper.quorum", "hdpcluster-15377-master-0.field.hortonworks.com,hdpcluster-15377-compute-2.field.hortonworks.com,hdpcluster-15377-worker-1.field.hortonworks.com:2181")
-
-    // Create Connection
-    val connection: Connection = ConnectionFactory.createConnection(hConf)
-
     print("connection created")
 
     // test scala
 
     print("[ ****** ] define schema table emp ")
 
-    def customerinfocatalog= s"""{
+    def table_cluster1= s"""{
         "table":{"namespace":"default", "name":"$table"},
         "rowkey":"key",
         "columns":{
@@ -118,10 +97,10 @@ object SparkReadHBaseTable_DiscoverSchema {
       }
       """
 
-    def withCatalogInfo(customerinfocatalog: String): DataFrame = {
+    def withCatalogInfo(table_cluster1: String): DataFrame = {
       sqlContext
         .read
-        .options(Map(HBaseTableCatalog.tableCatalog->customerinfocatalog,HBaseRelation.RESTRICTIVE -> "HBaseRelation.Restrictive.none",HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> "15416709729711".toString, HBaseRelation.HBASE_CONFIGURATION -> connectionHbase))
+        .options(Map(HBaseTableCatalog.tableCatalog->table_cluster1,HBaseRelation.RESTRICTIVE -> "HBaseRelation.Restrictive.none",HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> "15416709729711".toString, HBaseRelation.HBASE_CONFIGURATION -> connectionHbase))
         .format("org.apache.spark.sql.execution.datasources.hbase")
         .load()
     }
@@ -130,25 +109,18 @@ object SparkReadHBaseTable_DiscoverSchema {
 
     print("[ ****** ] declare DataFrame for table customer_info ")
 
-    val df = withCatalogInfo(customerinfocatalog)
+    val df = withCatalogInfo(table_cluster1)
 
     print("Here are the columns " + df.columns.foreach(println))
 
     df.columns.map(f => print(f))
     df.show(10,false)
 
-    connection.close()
 
     println("[ *** ] Creating HBase Configuration cluster 2")
 
-    val hConf2 = HBaseConfiguration.create()
-    hConf2.setInt("timeout", 120000)
-    hConf2.set("zookeeper.znode.parent_x", "/hbase-unsecure")
-    hConf2.set("hbase.zookeeper.quorum_x", "c325-node4.field.hortonworks.com,c325-node3.field.hortonworks.com,c325-node2.field.hortonworks.com:2181")
 
-    val hbaseContext2 = new HBaseContext(sc, hConf2, null)
-
-    def customerinfodebugcatalog= s"""{
+    def table_cluster2 = s"""{
         "table":{"namespace":"default", "name":"$tablex"},
         "rowkey":"key",
         "columns":{
@@ -158,7 +130,6 @@ object SparkReadHBaseTable_DiscoverSchema {
         }""".stripMargin
 
     // Create Connection
-    val connection2: Connection = ConnectionFactory.createConnection(hConf2)
 
     print("connection 2 created")
 
@@ -168,28 +139,27 @@ object SparkReadHBaseTable_DiscoverSchema {
       }
       """
 
-    def withCatalogInfoDebug(customerinfodebugcatalog: String): DataFrame = {
+    def withCatalogInfo2(table_cluster2: String): DataFrame = {
       sqlContext
         .read
-        .options(Map(HBaseTableCatalog.tableCatalog->customerinfodebugcatalog,HBaseRelation.RESTRICTIVE -> "HBaseRelation.Restrictive.none",HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> "15416709729711".toString, HBaseRelation.HBASE_CONFIGURATION -> connectionHbase2))
+        .options(Map(HBaseTableCatalog.tableCatalog->table_cluster2,HBaseRelation.RESTRICTIVE -> "HBaseRelation.Restrictive.none",HBaseRelation.MIN_STAMP -> "0", HBaseRelation.MAX_STAMP -> "15416709729711".toString, HBaseRelation.HBASE_CONFIGURATION -> connectionHbase2))
         .format("org.apache.spark.sql.execution.datasources.hbase")
         .load()
     }
 
     print("[ ****** ] declare DataFrame for table customer_info_debug ")
 
-    val df_debug = withCatalogInfoDebug(customerinfodebugcatalog)
+    val df_2 = withCatalogInfo2(table_cluster2)
 
     print("[ ****** ] here is the dataframe contain: ")
 
-    df_debug.show(10,false)
+    df_2.show(10,false)
 
-    connection2.close()
 
     print("[ *** ] Selective Differences - Get the count of each dataframe")
 
     val df_count = df.count()
-    val df_debug_count = df_debug.count()
+    val df_debug_count = df_2.count()
 
     if(df_count.equals(df_debug_count))
       print("[ ******* ] The number of row is the same between cluster 1 and 2 we have : " + df_count + " rows ")
@@ -201,7 +171,7 @@ object SparkReadHBaseTable_DiscoverSchema {
 
     val counts_df1 = df.select($"rowkey", size($"data").as("count"))
 
-    val counts_df2= df_debug.select($"rowkey", size($"data").as("count"))
+    val counts_df2= df_2.select($"rowkey", size($"data").as("count"))
 
     print("[ ********* +++++++ Here start the difference over columns +++++++++++ ********* ]")
 
@@ -240,24 +210,19 @@ object SparkReadHBaseTable_DiscoverSchema {
     // Update columns names
     val colNames_2 = Seq("rowkey1", "count1", "rowkey2","count2")
 
-    dfjoin
-
-
     val newdfjoin = dfjoin.toDF(colNames_2: _*)
 
     val dftemp = newdfjoin.join(df,newdfjoin("rowkey1")===df("rowkey")).select("rowkey1","data").toDF("rowkey1","datatable1")
 
     print("Step 3 ----------------------------------------------------------------")
 
-    dftemp.join(df_debug,dftemp("rowkey1")===df_debug("rowkey")).select("rowkey1","datatable1","data").toDF("rowkey","datatable1","datatable2").show(false)
+    dftemp.join(df_2,dftemp("rowkey1")===df_2("rowkey")).select("rowkey1","datatable1","data").toDF("rowkey","datatable1","datatable2").show(false)
 
     /*   val colNames = Seq("rowkey", "key1", "key2")
        val newDF = dfjoin.toDF(colNames: _*)
       val df_difference_columns = diff_row("rowkey","key1", "key2",newDF)
        df_difference_columns.show(false) */
 
-    connection.close()
-    connection2.close()
 
   }
 
