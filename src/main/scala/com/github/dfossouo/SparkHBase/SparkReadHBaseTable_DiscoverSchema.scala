@@ -68,8 +68,12 @@ object SparkReadHBaseTable_DiscoverSchema {
     val tbscan = 1540365233000L
     val start_time_tblscan = tbscan.toString()
 
+    val path = props.get("zookeeper.znode.parent").get
     val table = props.get("hbase.table.name").get
+    val quorum = props.get("hbase.zookeeper.quorum").get
+    val pathx = props.get("zookeeper.znode.parent_x").get
     val tablex = props.get("hbase.table.name_x").get
+    val quorumx = props.get("hbase.zookeeper.quorum_x").get
 
     // Create Spark Application
     val sparkConf = new SparkConf().setAppName("SparkReadHBaseTable")
@@ -109,8 +113,8 @@ object SparkReadHBaseTable_DiscoverSchema {
     print("[ ****** ] Create DataFrame table emp ")
 
     val connectionHbase = s"""{
-        "hbase.zookeeper.quorum":"hdpcluster-15377-master-0.field.hortonworks.com,hdpcluster-15377-compute-2.field.hortonworks.com,hdpcluster-15377-worker-1.field.hortonworks.com",
-        "zookeeper.znode.parent":"/hbase-unsecure"
+        "hbase.zookeeper.quorum":"$quorum",
+        "zookeeper.znode.parent":"$path"
       }
       """
 
@@ -159,8 +163,8 @@ object SparkReadHBaseTable_DiscoverSchema {
     print("connection 2 created")
 
     val connectionHbase2 = s"""{
-        "hbase.zookeeper.quorum":"c325-node4.field.hortonworks.com,c325-node3.field.hortonworks.com,c325-node2.field.hortonworks.com:2181",
-        "zookeeper.znode.parent":"/hbase-unsecure"
+        "hbase.zookeeper.quorum":"$quorumx",
+        "zookeeper.znode.parent":"$pathx"
       }
       """
 
