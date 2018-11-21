@@ -15,6 +15,7 @@ This code does the following:
   3) Create two dataframes and compare them to give back lines where the tables are differents (only the columns where we have differences)
 
 Usage:
+
 SPARK_MAJOR_VERSION=2 spark-submit --class com.github.dfossouo.SparkHBase.SparkReadHBaseTable --master yarn --deploy-mode client --driver-memory 2g --executor-memory 3g --executor-cores 2 --num-executors 2 --jars ./target/HBaseCRC-0.0.2-SNAPSHOT.jar /tmp/phoenix-client.jar ./props
 
 
@@ -28,6 +29,7 @@ This code does the following:
   3) Create two dataframes and compare them to give back lines where the tables are differents (only the columns where we have differences)
   
 Usage: 
+
 SPARK_MAJOR_VERSION=2 spark-submit --class com.github.dfossouo.SparkHBase.SparkReadHBaseTable_DiscoverSchema --master yarn --deploy-mode client --driver-memory 2g --executor-memory 3g --executor-cores 2 --num-executors 2 --jars ./target/HBaseCRC-0.0.2-SNAPSHOT.jar /tmp/phoenix-client.jar ./props
 
 
