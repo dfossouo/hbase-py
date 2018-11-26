@@ -27,6 +27,7 @@ This code does the following:
   1) Read the same HBase Table from two distinct or identical clusters (the schema of tables is not required)
   2) Extract specific time Range
   3) Create two dataframes and compare them to give back lines where the tables are differents (only the columns where we have differences)
+  4) Save the dataframe of difference in Elasticsearch using SavetoES 
   
 Usage: 
 

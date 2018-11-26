@@ -33,6 +33,9 @@ import org.apache.spark.sql.execution.datasources.hbase._
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.functions._
 import org.apache.spark.streaming.dstream
+import org.elasticsearch.spark._
+import org.elasticsearch.spark.sql
+import org.elasticsearch.hadoop
 
 
 object SparkReadHBaseTable_DiscoverSchema {
@@ -62,9 +65,15 @@ object SparkReadHBaseTable_DiscoverSchema {
     val pathx = props.get("zookeeper.znode.parent_x").get
     val tablex = props.get("hbase.table.name_x").get
     val quorumx = props.get("hbase.zookeeper.quorum_x").get
+    val es_ip = props.get("es_ip").get
+    val es_port = props.get("es_port").get
+    val es_index = props.get("es_index").get
 
     // Create Spark Application
     val sparkConf = new SparkConf().setAppName("SparkReadHBaseTable")
+    sparkConf.set("es.nodes", s"$es_ip")
+    sparkConf.set("es.port", s"$es_port")
+    sparkConf.set("es.index.auto.create", "true")
     val sc = new SparkContext(sparkConf)
     val sqlContext = new org.apache.spark.sql.SQLContext(sc)
     import sqlContext.implicits._
@@ -212,11 +221,16 @@ object SparkReadHBaseTable_DiscoverSchema {
 
     val newdfjoin = dfjoin.toDF(colNames_2: _*)
 
-    val dftemp = newdfjoin.join(df,newdfjoin("rowkey1")===df("rowkey")).select("rowkey1","data").toDF("rowkey1","datatable1")
+    val dftemp = newdfjoin.join(df,newdfjoin("rowkey1")===df("rowkey")).select("rowkey1","data").toDF("rowkey1","Table_Cluster1")
 
     print("Step 3 ----------------------------------------------------------------")
 
-    dftemp.join(df_2,dftemp("rowkey1")===df_2("rowkey")).select("rowkey1","datatable1","data").toDF("rowkey","datatable1","datatable2").show(false)
+    dftemp.join(df_2,dftemp("rowkey1")===df_2("rowkey")).select("rowkey1","Table_Cluster1","data").toDF("rowkey","Table_Cluster1","Table_Cluster2").withColumn("time_stamp", lit(current_timestamp())).show(false)
+
+    val esDF = dftemp.join(df_2,dftemp("rowkey1")===df_2("rowkey")).select("rowkey1","Table_Cluster1","data").toDF("rowkey","Table_Cluster1","Table_Cluster2").withColumn("time_stamp", lit(current_timestamp()))
+    import org.elasticsearch.spark.sql._
+    val es_date = date_format(current_date(), "y-M")
+    esDF.saveToEs(s"$es_index-$es_date/docs")
 
     /*   val colNames = Seq("rowkey", "key1", "key2")
        val newDF = dfjoin.toDF(colNames: _*)

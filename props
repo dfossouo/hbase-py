@@ -30,8 +30,9 @@ hbase.table.family=demographics
 
 ##############################################################
 #
-# Props for SimulateAndBulkLoadHBaseData
+# Props for ES
 #
 ##############################################################
-simulated_tablename=hbase_simulated_50m
-simulated_records=50000000
+es_ip=10.42.17.10
+es_port=9200
+es_index=hbase_replication
